@@ -79,6 +79,8 @@ class ResnetEncoder(nn.Module):
         if num_input_images > 1:
             self.encoder = resnet_multiimage_input(num_layers, pretrained, num_input_images)
         else:
+            import os
+            os.environ['TORCH_HOME'] = '~/.torch/'
             self.encoder = resnets[num_layers](pretrained)
 
         if num_layers > 34:
