@@ -258,7 +258,7 @@ class GradientLoss(nn.Module):
 # Please comment regularization_loss if you don't want to use multi-scale gradient matching term
 #####################################################
 class EdgeguidedRankingLoss(nn.Module):
-    def __init__(self, point_pairs=10000, sigma=0.15, alpha=1.0, mask_value=1e-8):
+    def __init__(self, point_pairs=10000, sigma=0.1, alpha=1.0, mask_value=1e-8):
         super(EdgeguidedRankingLoss, self).__init__()
         self.point_pairs = point_pairs # number of point pairs
         self.sigma = sigma # used for determining the ordinal relationship between a selected pair
