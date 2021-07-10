@@ -335,7 +335,7 @@ def train(args, train_loader, disp_net, pose_net, stn_net, optimizer, epoch_size
         loss_2 = compute_smooth_loss(tgt_depth, tgt_img)
 
         # loss_2 = compute_depth_gradient_loss(tgt_depth, tgt_pseudo_depth)
-        loss_ranking = compute_ranking_loss(tgt_depth, tgt_pseudo_depth, tgt_img)
+        #loss_ranking = compute_ranking_loss(tgt_depth, tgt_pseudo_depth, tgt_img)
         # loss_ranking = torch.tensor(0).float().to(device)
 
         # # debug
@@ -348,12 +348,12 @@ def train(args, train_loader, disp_net, pose_net, stn_net, optimizer, epoch_size
         # plt.imshow(vis_gt)
         # plt.show()
 
-        loss = w1*loss_1 + w2*loss_2 + w3*loss_3 + w4*loss_rot_triplet + w5*loss_rot_supervised + loss_ranking
+        loss = w1*loss_1 + w2*loss_2 + w3*loss_3 + w4*loss_rot_triplet + w5*loss_rot_supervised
 
         if log_losses:
             train_writer.add_scalar('photometric_error', loss_1.item(), n_iter)
             train_writer.add_scalar('disparity_smoothness_loss', loss_2.item(), n_iter)
-            train_writer.add_scalar('edge_ranking_loss', loss_ranking.item(), n_iter)
+            #train_writer.add_scalar('edge_ranking_loss', loss_ranking.item(), n_iter)
             train_writer.add_scalar('geometry_consistency_loss', loss_3.item(), n_iter)
             train_writer.add_scalar('rot_triplet_loss', loss_rot_triplet.item(), n_iter)
             train_writer.add_scalar('rot_before_avg', rot_before.item() / len(ref_imgs), n_iter)
