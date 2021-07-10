@@ -1,4 +1,4 @@
-DATA_ROOT=/media/bjw/Disk/depth_data
+DATA_ROOT=./../depth_data
 TRAIN_SET=$DATA_ROOT/nyu_gt/
 python train.py $TRAIN_SET \
 --folder-type sequence \
@@ -12,7 +12,7 @@ python train.py $TRAIN_SET \
 --with-pretrain 1 \
 --log-output --with-gt \
 --dataset nyu \
---name r18_nyu_test_edgeranking_new
+--name pseudo_Ranking
 
 
 # --pretrained-disp=checkpoints/r18_nyu_stn/07-02-00-26/disp_model_best.pth.tar \
