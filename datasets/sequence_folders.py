@@ -7,8 +7,8 @@ import os
 
 
 def load_as_float(path):
-    im = imread(path).astype(np.float32)
-    return im
+    return imread(path).astype(np.float32)
+
 
 class SequenceFolder(data.Dataset):
     """A sequence data loader where the files are arranged in this way:
@@ -31,6 +31,11 @@ class SequenceFolder(data.Dataset):
         self.dataset = dataset
         self.k = skip_frames
         self.crawl_folders(sequence_length)
+        # if 'ddad' in self.root:
+        #     self.maxDepth = 200
+        # else:
+        #     self.maxDepth = 65536
+        self.maxDepth = 65536
 
     def crawl_folders(self, sequence_length):
         # k skip frames
@@ -42,12 +47,14 @@ class SequenceFolder(data.Dataset):
             intrinsics = np.genfromtxt(scene/'cam.txt').astype(np.float32).reshape((3, 3))
             imgs = sorted(scene.files('*.jpg'))
             depths = sorted((scene/'pseudo_depth').files('*.png'))
+            planes = sorted((scene/'pseudo_plane').files('*.png'))
             # depths = sorted((scene/'depth').files('*.png'))
 
             if len(imgs) < sequence_length:
                 continue
             for i in range(demi_length * self.k, len(imgs)-demi_length * self.k):
-                sample = {'intrinsics': intrinsics, 'tgt': imgs[i], 'ref_imgs': [], 'tgt_pseudo_depth':depths[i]}
+                sample = {'intrinsics': intrinsics, 'tgt': imgs[i], 'ref_imgs': [],
+                          'tgt_pseudo_depth':depths[i], 'tgt_pseudo_plane':planes[i]}
                 for j in shifts:
                     sample['ref_imgs'].append(imgs[i+j])
                 sequence_set.append(sample)
@@ -58,16 +65,18 @@ class SequenceFolder(data.Dataset):
         sample = self.samples[index]
         tgt_img = load_as_float(sample['tgt'])
         tgt_pseudo_depth = load_as_float(sample['tgt_pseudo_depth'])
+        tgt_pseudo_plane = load_as_float(sample['tgt_pseudo_plane'])
         ref_imgs = [load_as_float(ref_img) for ref_img in sample['ref_imgs']]
         if self.transform is not None:
-            imgs, intrinsics = self.transform([tgt_img, tgt_pseudo_depth] + ref_imgs, np.copy(sample['intrinsics']))
+            imgs, intrinsics = self.transform([tgt_img, tgt_pseudo_depth, tgt_pseudo_plane] + ref_imgs, np.copy(sample['intrinsics']))
             tgt_img = imgs[0]
             tgt_pseudo_depth = imgs[1]
+            tgt_pseudo_plane = imgs[2]
 
-            ref_imgs = imgs[2:]
+            ref_imgs = imgs[3:]
         else:
             intrinsics = np.copy(sample['intrinsics'])
-        return tgt_img, tgt_pseudo_depth, ref_imgs, intrinsics, np.linalg.inv(intrinsics)
+        return tgt_img, tgt_pseudo_depth, tgt_pseudo_plane, ref_imgs, intrinsics, np.linalg.inv(intrinsics)
 
     def __len__(self):
         return len(self.samples)

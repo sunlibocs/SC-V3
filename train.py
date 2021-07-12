@@ -15,7 +15,7 @@ import custom_transforms
 from utils import tensor2array, save_checkpoint, save_checkpoint2, save_checkpoint_stn
 from datasets.sequence_folders import SequenceFolder
 from datasets.pair_folders import PairFolder
-from loss_functions import compute_smooth_loss, compute_photo_and_geometry_loss, compute_errors, compute_depth_gradient_loss
+from loss_functions import compute_smooth_loss, compute_photo_and_geometry_loss, compute_errors, compute_depth_gradient_loss, compute_plane_loss
 from logger import TermLogger, AverageMeter
 from tensorboardX import SummaryWriter
 from inverse_warp import inverse_rotation_warp
@@ -72,6 +72,7 @@ torch.autograd.set_detect_anomaly(True)
 
 from edge_ranking_loss import EdgeguidedRankingLoss
 compute_ranking_loss = EdgeguidedRankingLoss().to(device)
+
 
 
 def main():
@@ -292,13 +293,14 @@ def train(args, train_loader, disp_net, pose_net, stn_net, optimizer, epoch_size
     end = time.time()
     logger.train_bar.update(0)
 
-    for i, (tgt_img, tgt_pseudo_depth, ref_imgs, intrinsics, intrinsics_inv) in enumerate(train_loader):
+    for i, (tgt_img, tgt_pseudo_depth, tgt_pseudo_plane, ref_imgs, intrinsics, intrinsics_inv) in enumerate(train_loader):
         log_losses = i > 0 and n_iter % args.print_freq == 0
 
         # measure data loading time
         data_time.update(time.time() - end)
         tgt_img = tgt_img.to(device)
         tgt_pseudo_depth = tgt_pseudo_depth.to(device)
+        tgt_pseudo_plane = tgt_pseudo_plane.to(device)
         ref_imgs = [img.to(device) for img in ref_imgs]
         intrinsics = intrinsics.to(device)
 
@@ -334,9 +336,8 @@ def train(args, train_loader, disp_net, pose_net, stn_net, optimizer, epoch_size
         
         loss_2 = compute_smooth_loss(tgt_depth, tgt_img)
 
-        # loss_2 = compute_depth_gradient_loss(tgt_depth, tgt_pseudo_depth)
         loss_ranking = compute_ranking_loss(tgt_depth, tgt_pseudo_depth, tgt_img)
-        # loss_ranking = torch.tensor(0).float().to(device)
+        loss_plane = compute_plane_loss(tgt_depth, tgt_pseudo_plane, intrinsics)
 
         # # debug
         # from matplotlib import pyplot as plt
@@ -348,12 +349,13 @@ def train(args, train_loader, disp_net, pose_net, stn_net, optimizer, epoch_size
         # plt.imshow(vis_gt)
         # plt.show()
 
-        loss = w1*loss_1 + w2*loss_2 + w3*loss_3 + w4*loss_rot_triplet + w5*loss_rot_supervised + loss_ranking
+        loss = w1*loss_1 + w2*loss_2 + w3*loss_3 + w4*loss_rot_triplet + w5*loss_rot_supervised + loss_ranking + loss_plane
 
         if log_losses:
             train_writer.add_scalar('photometric_error', loss_1.item(), n_iter)
             train_writer.add_scalar('disparity_smoothness_loss', loss_2.item(), n_iter)
             train_writer.add_scalar('edge_ranking_loss', loss_ranking.item(), n_iter)
+            train_writer.add_scalar('plane_loss', loss_plane.item(), n_iter)
             train_writer.add_scalar('geometry_consistency_loss', loss_3.item(), n_iter)
             train_writer.add_scalar('rot_triplet_loss', loss_rot_triplet.item(), n_iter)
             train_writer.add_scalar('rot_before_avg', rot_before.item() / len(ref_imgs), n_iter)

@@ -5,6 +5,8 @@ import torch.nn.functional as F
 from inverse_warp import inverse_warp2, inverse_warp
 import numpy as np
 import math
+from VNL_planes_loss import *
+
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
@@ -216,3 +218,25 @@ def compute_errors(gt, pred, dataset):
         sq_rel += torch.mean(((valid_gt - valid_pred)**2) / valid_gt)
 
     return [metric.item() / batch_size for metric in [abs_diff, abs_rel, sq_rel, a1, a2, a3]]
+
+
+# compute ranking loss for the parts outside the mask
+def compute_plane_loss(ref_depth, vnl_plane, intrinsic):
+    if vnl_plane.max() > 0:
+        b, c, h, w = ref_depth.shape
+        ## VNL loss
+        vnl_loss = VNL_Planes_Loss(520.0, 520.0, (h, w), xyz_mode='xyz')
+        # mask_kp1 = vnl_mask > 125 # 225 -> road plane
+        # # mask_plane = torch.zeros_like(gt_depth, dtype=torch.uint8)
+        # mask_plane = 1 * mask_kp1
+        mask_plane = vnl_plane
+
+        focal_length_x = intrinsic[:,0,0]
+        focal_length_y = intrinsic[:,1,1]
+        u0 = intrinsic[:,0,2]
+        v0 = intrinsic[:,1,2]
+        loss_vnl = vnl_loss(ref_depth, ref_depth, mask_plane, focal_length_x, focal_length_y, u0, v0)
+
+    else:
+        loss_vnl = torch.tensor(0).float().to(device)
+    return loss_vnl
