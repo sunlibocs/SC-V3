@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
-from sklearn.cluster import DBSCAN
-from scipy import stats
+#from sklearn.cluster import DBSCAN
+#from scipy import stats
 import skimage.measure
 import json
 import os
