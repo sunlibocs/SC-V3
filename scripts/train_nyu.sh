@@ -1,5 +1,5 @@
 DATA_ROOT=./../depth_data
-TRAIN_SET=$DATA_ROOT/nyu_gt/
+TRAIN_SET=$DATA_ROOT/nyu/
 python train.py $TRAIN_SET \
 --folder-type sequence \
 --resnet-layers 18 \
@@ -12,7 +12,7 @@ python train.py $TRAIN_SET \
 --with-pretrain 1 \
 --log-output --with-gt \
 --dataset nyu \
---name pseudo_Ranking
+--name pseudo_Ranking_Plane
 
 
 # --pretrained-disp=checkpoints/r18_nyu_stn/07-02-00-26/disp_model_best.pth.tar \

@@ -46,8 +46,8 @@ class SequenceFolder(data.Dataset):
         for scene in self.scenes:
             intrinsics = np.genfromtxt(scene/'cam.txt').astype(np.float32).reshape((3, 3))
             imgs = sorted(scene.files('*.jpg'))
-            depths = sorted((scene/'pseudo_depth').files('*.png'))
-            planes = sorted((scene/'pseudo_plane').files('*.png'))
+            depths = sorted((scene/'pseudo_depth2').files('*.png'))
+            planes = sorted((scene/'pseudo_normal_plane').files('*.png'))
             # depths = sorted((scene/'depth').files('*.png'))
 
             if len(imgs) < sequence_length:
