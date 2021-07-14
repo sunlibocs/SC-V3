@@ -149,7 +149,7 @@ def compute_NormalSmooth_loss(tgt_depth, tgt_plane, intrinsics):
         dif_plane_y = plane[:, :, :-1, :] - plane[:, :, 1:, :]
         valid_mask = (dif_plane_x != 0) * (dif_plane_y != 0)
         valid_mask = valid_mask.float()
-        valid_mask = valid_mask.expand(-1,3,-1,-1)
+        valid_mask = valid_mask.expand(-1, 3, -1, -1)
 
         grad_normal_x *= valid_mask
         grad_normal_y *= valid_mask
