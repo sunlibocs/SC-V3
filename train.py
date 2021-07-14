@@ -15,7 +15,7 @@ import custom_transforms
 from utils import tensor2array, save_checkpoint, save_checkpoint2, save_checkpoint_stn
 from datasets.sequence_folders import SequenceFolder
 from datasets.pair_folders import PairFolder
-from loss_functions import compute_smooth_loss, compute_photo_and_geometry_loss, compute_errors, compute_depth_gradient_loss, compute_plane_loss
+from loss_functions import compute_smooth_loss, compute_photo_and_geometry_loss, compute_errors, compute_depth_gradient_loss, compute_NormalSmooth_loss
 from logger import TermLogger, AverageMeter
 from tensorboardX import SummaryWriter
 from inverse_warp import inverse_rotation_warp
@@ -337,7 +337,7 @@ def train(args, train_loader, disp_net, pose_net, stn_net, optimizer, epoch_size
         loss_2 = compute_smooth_loss(tgt_depth, tgt_img)
 
         loss_ranking = compute_ranking_loss(tgt_depth, tgt_pseudo_depth, tgt_img)
-        loss_plane = compute_plane_loss(tgt_depth, tgt_pseudo_plane, intrinsics)
+        loss_plane = compute_NormalSmooth_loss(tgt_depth, tgt_pseudo_plane, intrinsics)
 
         # # debug
         # from matplotlib import pyplot as plt

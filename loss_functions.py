@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from inverse_warp import inverse_warp2, inverse_warp
 import numpy as np
 import math
-from VNL_planes_loss import *
+from Surface_normal import *
 
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -133,6 +133,38 @@ def compute_smooth_loss(tgt_depth, tgt_img):
     return loss
 
 
+
+def compute_NormalSmooth_loss(tgt_depth, tgt_plane, intrinsics):
+    def get_normalSmooth_loss(normal, plane):
+        """
+        Computes the smoothness loss for a normal image
+        The color image is used for edge-aware smoothness
+        The normal and plane should be B C H W
+        """
+
+        grad_normal_x = torch.abs(normal[:, :, :, :-1] - normal[:, :, :, 1:])
+        grad_normal_y = torch.abs(normal[:, :, :-1, :] - normal[:, :, 1:, :])
+
+        dif_plane_x =  plane[:, :, :, :-1] - plane[:, :, :, 1:]
+        dif_plane_y = plane[:, :, :-1, :] - plane[:, :, 1:, :]
+        valid_mask = (dif_plane_x != 0) * (dif_plane_y != 0)
+        valid_mask = valid_mask.float()
+        valid_mask = valid_mask.expand(-1,3,-1,-1)
+
+        grad_normal_x *= valid_mask
+        grad_normal_y *= valid_mask
+
+        return grad_normal_x.mean() + grad_normal_y.mean()
+
+    mask_p = tgt_depth>-1000000.0
+    focal_length = intrinsics[:,0,0] # focal_length_x
+    tgt_normal = surface_normal_from_depth(tgt_depth, focal_length,  mask_p)
+    loss = get_normalSmooth_loss(tgt_normal, tgt_plane)
+
+    return loss
+
+
+
 def compute_depth_gradient_loss(d_pred, d_gt):
 
     def gradient_loss(d_pred, d_gt):
@@ -221,22 +253,22 @@ def compute_errors(gt, pred, dataset):
 
 
 # compute ranking loss for the parts outside the mask
-def compute_plane_loss(ref_depth, vnl_plane, intrinsic):
-    if vnl_plane.max() > 0:
-        b, c, h, w = ref_depth.shape
-        ## VNL loss
-        vnl_loss = VNL_Planes_Loss(520.0, 520.0, (h, w), xyz_mode='xyz')
-        # mask_kp1 = vnl_mask > 125 # 225 -> road plane
-        # # mask_plane = torch.zeros_like(gt_depth, dtype=torch.uint8)
-        # mask_plane = 1 * mask_kp1
-        mask_plane = vnl_plane
-
-        focal_length_x = intrinsic[:,0,0]
-        focal_length_y = intrinsic[:,1,1]
-        u0 = intrinsic[:,0,2]
-        v0 = intrinsic[:,1,2]
-        loss_vnl = vnl_loss(ref_depth, ref_depth, mask_plane, focal_length_x, focal_length_y, u0, v0)
-
-    else:
-        loss_vnl = torch.tensor(0).float().to(device)
-    return loss_vnl
+# def compute_plane_loss(ref_depth, vnl_plane, intrinsic):
+#     if vnl_plane.max() > 0:
+#         # b, c, h, w = ref_depth.shape
+#         # ## VNL loss
+#         # vnl_loss = VNL_Planes_Loss(520.0, 520.0, (h, w), xyz_mode='xyz')
+#         # # mask_kp1 = vnl_mask > 125 # 225 -> road plane
+#         # # # mask_plane = torch.zeros_like(gt_depth, dtype=torch.uint8)
+#         # # mask_plane = 1 * mask_kp1
+#         # mask_plane = vnl_plane
+#         #
+#         # focal_length_x = intrinsic[:,0,0]
+#         # focal_length_y = intrinsic[:,1,1]
+#         # u0 = intrinsic[:,0,2]
+#         # v0 = intrinsic[:,1,2]
+#         # loss_vnl = vnl_loss(ref_depth, ref_depth, mask_plane, focal_length_x, focal_length_y, u0, v0)
+#
+#     else:
+#         loss_vnl = torch.tensor(0).float().to(device)
+#     return loss_vnl
