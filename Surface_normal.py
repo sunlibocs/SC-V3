@@ -159,7 +159,7 @@ def surface_normal_from_depth(depth, focal_length, valid_mask=None):
     # para depth: depth map, [b, c, h, w]
     b, c, h, w = depth.shape
     # focal_length = focal_length[:, None, None, None]
-    focal_length = focal_length.unsqueeze(0).unsqueeze(0).unsqueeze(0).permute(3, 0, 1, 2).expend(-1, c, h, w) # b c h w
+    focal_length = focal_length.unsqueeze(0).unsqueeze(0).unsqueeze(0).permute(3, 0, 1, 2).expand(-1, c, h, w) # b c h w
 
     depth_filter = nn.functional.avg_pool2d(depth, kernel_size=3, stride=1, padding=1)
     depth_filter = nn.functional.avg_pool2d(depth_filter, kernel_size=3, stride=1, padding=1)
