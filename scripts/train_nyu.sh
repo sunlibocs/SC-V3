@@ -12,7 +12,7 @@ python train.py $TRAIN_SET \
 --with-pretrain 1 \
 --log-output --with-gt \
 --dataset nyu \
---name pseudo_Plane_2
+--name pseudo_Plane_2S
 
 
 # --pretrained-disp=checkpoints/r18_nyu_stn/07-02-00-26/disp_model_best.pth.tar \

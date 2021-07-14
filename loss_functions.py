@@ -5,10 +5,31 @@ import torch.nn.functional as F
 from inverse_warp import inverse_warp2, inverse_warp
 import numpy as np
 import math
-from Surface_normal import *
+from surface_normal import *
 
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+
+class Image_Info():
+    def __init__(self, height, width):
+        x_row = np.arange(0, width)
+        x = np.tile(x_row, (height, 1))
+        x = x[np.newaxis, :, :]
+        x = x.astype(np.float32)
+        x = torch.from_numpy(x.copy()).cuda()
+        # u_u0 = x - width / 2.0
+        y_col = np.arange(0, height)  # y_col = np.arange(0, height)
+        y = np.tile(y_col, (width, 1)).T
+        y = y[np.newaxis, :, :]
+        y = y.astype(np.float32)
+        y = torch.from_numpy(y.copy()).cuda()
+        # v_v0 = y - height / 2.0
+        # return u_u0, v_v0
+        self.xIndex =  x
+        self.yIndex = y
+
+    def getIndex(self):
+        return self.xIndex, self.yIndex
 
 
 class SSIM(nn.Module):
@@ -134,14 +155,13 @@ def compute_smooth_loss(tgt_depth, tgt_img):
 
 
 
-def compute_NormalSmooth_loss(tgt_depth, tgt_plane, intrinsics):
+def compute_NormalSmooth_loss(tgt_depth, tgt_plane, intrinsics, image_info):
     def get_normalSmooth_loss(normal, plane):
         """
         Computes the smoothness loss for a normal image
         The color image is used for edge-aware smoothness
         The normal and plane should be B C H W
         """
-
         grad_normal_x = torch.abs(normal[:, :, :, :-1] - normal[:, :, :, 1:])
         grad_normal_y = torch.abs(normal[:, :, :-1, :] - normal[:, :, 1:, :])
 
@@ -161,9 +181,20 @@ def compute_NormalSmooth_loss(tgt_depth, tgt_plane, intrinsics):
 
         return grad_normal_x.mean() + grad_normal_y.mean()
 
-    mask_p = tgt_depth>-1000000.0
-    focal_length = intrinsics[:,0,0] # focal_length_x
-    tgt_normal = surface_normal_from_depth(tgt_depth, focal_length,  mask_p)
+    fx = intrinsics[:, 0:1, 0:1] # fx
+    fy = intrinsics[:, 1:2, 1:2] # fy
+    u0 = intrinsics[:, 0:1, 2:3]
+    v0 = intrinsics[:, 1:2, 2:3]
+    b, c, h, w = tgt_depth.shape
+    fx = fx.unsqueeze(0).permute(1, 2, 3, 0).expand(-1, c, h, w) # b c h w
+    fy = fy.unsqueeze(0).permute(1, 2, 3, 0).expand(-1, c, h, w) # b c h w
+    u0 = u0.unsqueeze(0).permute(1, 2, 3, 0).expand(-1, c, h, w) # b c h w
+    v0 = v0.unsqueeze(0).permute(1, 2, 3, 0).expand(-1, c, h, w) # b c h w
+    xIndex_p, yIndex_p = image_info.getIndex()
+    u_u0 = xIndex_p.unsqueeze(0).expand(b, -1, -1, -1) - u0
+    v_v0 = yIndex_p.unsqueeze(0).expand(b, -1, -1, -1)  - v0
+
+    tgt_normal = surface_normal_from_depth(tgt_depth, fx, fy, u_u0, v_v0)
     loss = get_normalSmooth_loss(tgt_normal, tgt_plane)
 
     return loss

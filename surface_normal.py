@@ -3,28 +3,28 @@ import numpy as np
 import torch.nn as nn
 
 
-def init_image_coor(height, width):
-    x_row = np.arange(0, width)
-    x = np.tile(x_row, (height, 1))
-    x = x[np.newaxis, :, :]
-    x = x.astype(np.float32)
-    x = torch.from_numpy(x.copy()).cuda()
-    u_u0 = x - width/2.0
+# def init_image_coor(height, width):
+#     x_row = np.arange(0, width)
+#     x = np.tile(x_row, (height, 1))
+#     x = x[np.newaxis, :, :]
+#     x = x.astype(np.float32)
+#     x = torch.from_numpy(x.copy()).cuda()
+#     u_u0 = x - width/2.0
+#
+#     y_col = np.arange(0, height)  # y_col = np.arange(0, height)
+#     y = np.tile(y_col, (width, 1)).T
+#     y = y[np.newaxis, :, :]
+#     y = y.astype(np.float32)
+#     y = torch.from_numpy(y.copy()).cuda()
+#     v_v0 = y - height/2.0
+#     return u_u0, v_v0
 
-    y_col = np.arange(0, height)  # y_col = np.arange(0, height)
-    y = np.tile(y_col, (width, 1)).T
-    y = y[np.newaxis, :, :]
-    y = y.astype(np.float32)
-    y = torch.from_numpy(y.copy()).cuda()
-    v_v0 = y - height/2.0
-    return u_u0, v_v0
 
-
-def depth_to_xyz(depth, focal_length):
-    b, c, h, w = depth.shape
-    u_u0, v_v0 = init_image_coor(h, w)
-    x = u_u0 * depth / focal_length
-    y = v_v0 * depth / focal_length
+def depth_to_xyz(depth, fx, fy, u_u0, v_v0):
+    # b, c, h, w = depth.shape
+    # u_u0, v_v0 = init_image_coor(h, w)
+    x = u_u0 * depth / fx
+    y = v_v0 * depth / fy
     z = depth
     pw = torch.cat([x, y, z], 1).permute(0, 2, 3, 1) # [b, h, w, c]
     return pw
@@ -155,23 +155,22 @@ def get_surface_normalv2(xyz, patch_size=5):
     # plt.show()
     return n_img_aver_norm_out#n_img1_norm.permute((1, 2, 3, 0))
 
-def surface_normal_from_depth(depth, focal_length, valid_mask=None):
+def surface_normal_from_depth(depth, fx, fy, u_u0, v_v0, valid_mask=None):
     # para depth: depth map, [b, c, h, w]
     b, c, h, w = depth.shape
     # focal_length = focal_length[:, None, None, None]
-    focal_length = focal_length.unsqueeze(0).unsqueeze(0).unsqueeze(0).permute(3, 0, 1, 2).expand(-1, c, h, w) # b c h w
 
     depth_filter = nn.functional.avg_pool2d(depth, kernel_size=3, stride=1, padding=1)
     depth_filter = nn.functional.avg_pool2d(depth_filter, kernel_size=3, stride=1, padding=1)
-    xyz = depth_to_xyz(depth_filter, focal_length)
+    xyz = depth_to_xyz(depth_filter, fx, fy, u_u0, v_v0)
     sn_batch = []
     for i in range(b):
         xyz_i = xyz[i, :][None, :, :, :]
         normal = get_surface_normalv2(xyz_i)
         sn_batch.append(normal)
     sn_batch = torch.cat(sn_batch, dim=3).permute((3, 2, 0, 1))  # [b, c, h, w]
-    mask_invalid = (~valid_mask).repeat(1, 3, 1, 1)
-    sn_batch[mask_invalid] = 0.0
+    # mask_invalid = (~valid_mask).repeat(1, 3, 1, 1)
+    # sn_batch[mask_invalid] = 0.0
 
     return sn_batch
 
