@@ -11,4 +11,4 @@ python train.py $TRAIN_SET \
 --with-pretrain 1 \
 --log-output --with-gt \
 --dataset ddad \
---name pseudo_PureRankingDDAD
+--name baseline_DDAD
