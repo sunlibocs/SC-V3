@@ -186,7 +186,9 @@ def compute_errors(gt, pred, dataset):
     
     if pred.nelement() != gt.nelement():
         pred = F.interpolate(pred, [h,w], mode='nearest').squeeze(1)
-
+    else:##TODO for the ddad
+        pred = pred.squeeze(1)
+        
     if dataset == 'kitti':
         crop_mask = gt[0] != gt[0]
         y1, y2 = int(0.40810811 * gt.size(1)), int(0.99189189 * gt.size(1))
