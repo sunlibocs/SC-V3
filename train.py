@@ -355,7 +355,7 @@ def train(args, train_loader, disp_net, pose_net, stn_net, optimizer, epoch_size
         if log_losses:
             train_writer.add_scalar('photometric_error', loss_1.item(), n_iter)
             train_writer.add_scalar('disparity_smoothness_loss', loss_2.item(), n_iter)
-            train_writer.add_scalar('edge_ranking_loss', loss_ranking.item(), n_iter)
+            train_writer.add_scalar('mask_ranking_loss', loss_ranking.item(), n_iter)
             train_writer.add_scalar('geometry_consistency_loss', loss_3.item(), n_iter)
             train_writer.add_scalar('rot_triplet_loss', loss_rot_triplet.item(), n_iter)
             train_writer.add_scalar('rot_before_avg', rot_before.item() / len(ref_imgs), n_iter)
