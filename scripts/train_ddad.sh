@@ -1,5 +1,5 @@
 DATA_ROOT=./../depth_data
-TRAIN_SET=$DATA_ROOT/ddad/
+TRAIN_SET=$DATA_ROOT/ddad/training/
 python train.py $TRAIN_SET \
 --folder-type sequence \
 --resnet-layers 18 \
