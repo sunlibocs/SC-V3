@@ -49,18 +49,29 @@ def compute_photo_and_geometry_loss(tgt_img, ref_imgs, intrinsics, tgt_depth, re
 
     photo_loss = 0
     geometry_loss = 0
-
+    tgt_valid_weight_list = []
+    tgt_valid_weight = None
     for ref_img, ref_depth, pose, pose_inv in zip(ref_imgs, ref_depths, poses, poses_inv):
 
-        photo_loss1, geometry_loss1 = compute_pairwise_loss(tgt_img, ref_img, tgt_depth, ref_depth, pose,
+        photo_loss1, geometry_loss1, tgt_valid_weightTemp = compute_pairwise_loss(tgt_img, ref_img, tgt_depth, ref_depth, pose,
                                                             intrinsics, with_ssim, with_mask, with_auto_mask, padding_mode)
-        photo_loss2, geometry_loss2 = compute_pairwise_loss(ref_img, tgt_img, ref_depth, tgt_depth, pose_inv,
+        photo_loss2, geometry_loss2, _  = compute_pairwise_loss(ref_img, tgt_img, ref_depth, tgt_depth, pose_inv,
                                                             intrinsics, with_ssim, with_mask, with_auto_mask, padding_mode)
 
         photo_loss += (photo_loss1 + photo_loss2)
         geometry_loss += (geometry_loss1 + geometry_loss2)
+        tgt_valid_weight_list.append(tgt_valid_weightTemp)
 
-    return photo_loss, geometry_loss
+    ref_rangeLen = len(tgt_valid_weight_list) ## The average valid weight
+    for i in range(ref_rangeLen):
+        if i == 0:
+            tgt_valid_weight = tgt_valid_weight_list[0]
+        else:
+            tgt_valid_weight += tgt_valid_weight_list[i]
+    tgt_valid_weight = tgt_valid_weight/ref_rangeLen
+
+
+    return photo_loss, geometry_loss, tgt_valid_weight
 
 
 def compute_pairwise_loss(tgt_img, ref_img, tgt_depth, ref_depth, pose, intrinsic, with_ssim, with_mask, with_auto_mask, padding_mode):
@@ -90,7 +101,7 @@ def compute_pairwise_loss(tgt_img, ref_img, tgt_depth, ref_depth, pose, intrinsi
     reconstruction_loss = mean_on_mask(diff_img, valid_mask)
     geometry_consistency_loss = mean_on_mask(diff_depth, valid_mask)
 
-    return reconstruction_loss, geometry_consistency_loss
+    return reconstruction_loss, geometry_consistency_loss,  weight_mask * valid_mask
 
 
 # compute mean value on a binary mask

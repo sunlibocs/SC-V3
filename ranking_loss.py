@@ -1,11 +1,13 @@
 import torch
 from torch import nn
 import numpy as np
+import torch.nn.functional as F
+import matplotlib.pyplot as plt
+import os
 
-
-class Ranking_Loss(nn.Module):
-    def __init__(self, sample_ratio=0.1, filter_depth=1e-5):
-        super(Ranking_Loss, self).__init__()
+class MaskRanking_Loss(nn.Module):
+    def __init__(self, sample_ratio=0.1, filter_depth=1e-8):
+        super(MaskRanking_Loss, self).__init__()
         self.sample_ratio = sample_ratio
         self.filter_depth = filter_depth
 
@@ -36,7 +38,7 @@ class Ranking_Loss(nn.Module):
 
         return pred[mask_A][mask_ignore], pred[mask_B][mask_ignore], target
 
-    def ranking_loss(self, z_A, z_B, target):
+    def cal_ranking_loss(self, z_A, z_B, target):
         """
         loss for a given set of pixels:
         z_A: predicted absolute depth for pixels A
@@ -48,23 +50,8 @@ class Ranking_Loss(nn.Module):
         squared_loss = torch.mean(pred_depth[target == 0] ** 2)  # if pred depth is not zero adds to loss
         return log_loss + squared_loss
 
-    def forward(self, output, gt_depth):
-        za, zb, target = self.generate_target(gt_depth, output)
-        total_loss = self.ranking_loss(za, zb, target)
+    def forward(self, pred_depth, gt_depth, tgt_valid_weight):
+        za, zb, target = self.generate_target(gt_depth, pred_depth)
+        total_loss = self.cal_ranking_loss(za, zb, target)
 
         return total_loss
-
-
-if __name__ == '__main__':
-    import cv2
-
-    rank_loss = Ranking_Loss()
-    pred_depth = np.random.randn(2, 1, 480, 640)
-    gt_depth = np.random.randn(2, 1, 480, 640)
-    # gt_depth = cv2.imread('/hardware/yifanliu/SUNRGBD/sunrgbd-meta-data/sunrgbd_test_depth/2.png', -1)
-    # gt_depth = gt_depth[None, :, :, None]
-    # pred_depth = gt_depth[:, :, ::-1, :]
-    gt_depth = torch.tensor(np.asarray(gt_depth, np.float32)).cuda()
-    pred_depth = torch.tensor(np.asarray(pred_depth, np.float32)).cuda()
-    loss = rank_loss(pred_depth, gt_depth)
-    print(loss)

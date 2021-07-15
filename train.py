@@ -50,7 +50,7 @@ parser.add_argument('--with-ssim', type=int, default=1, help='with ssim or not')
 parser.add_argument('--with-mask', type=int, default=1, help='with the the mask for moving objects and occlusions or not')
 parser.add_argument('--with-auto-mask', type=int,  default=1, help='with the the mask for stationary points')
 parser.add_argument('--with-pretrain', type=int,  default=1, help='with or without imagenet pretrain for resnet encoder')
-parser.add_argument('--dataset', type=str, choices=['kitti', 'nyu', 'void', '7scene'], default='kitti', help='the dataset to train')
+parser.add_argument('--dataset', type=str, choices=['kitti', 'nyu', 'void', '7scene', 'ddad'], default='kitti', help='the dataset to train')
 parser.add_argument('--pretrained-disp', dest='pretrained_disp', default=None, metavar='PATH', help='path to pre-trained dispnet model')
 parser.add_argument('--pretrained-pose', dest='pretrained_pose', default=None, metavar='PATH', help='path to pre-trained posenet model')
 parser.add_argument('--pretrained-stn', dest='pretrained_stn', default=None, metavar='PATH', help='path to pre-trained STN model')
@@ -70,8 +70,8 @@ n_iter = 0
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 torch.autograd.set_detect_anomaly(True)
 
-from edge_ranking_loss import EdgeguidedRankingLoss
-compute_ranking_loss = EdgeguidedRankingLoss().to(device)
+from ranking_loss import MaskRanking_Loss
+compute_maskRanking_loss = MaskRanking_Loss().to(device)
 
 
 def main():
@@ -107,6 +107,8 @@ def main():
         training_size = [256, 320]
     elif args.dataset == 'kitti':
         training_size = [256, 832]
+    elif args.dataset == 'ddad':
+        training_size = [384, 640]
     
     train_transform = custom_transforms.Compose([
         custom_transforms.RandomHorizontalFlip(),
@@ -328,14 +330,14 @@ def train(args, train_loader, disp_net, pose_net, stn_net, optimizer, epoch_size
         tgt_depth, ref_depths = compute_depth(disp_net, tgt_img, ref_imgs_warped)
         poses, poses_inv = compute_pose_with_inv(pose_net, tgt_img, ref_imgs_warped)
 
-        loss_1, loss_3 = compute_photo_and_geometry_loss(tgt_img, ref_imgs_warped, intrinsics, tgt_depth, ref_depths,
+        loss_1, loss_3, tgt_valid_weight = compute_photo_and_geometry_loss(tgt_img, ref_imgs_warped, intrinsics, tgt_depth, ref_depths,
                                                          poses, poses_inv, args.num_scales, args.with_ssim,
                                                          args.with_mask, args.with_auto_mask, args.padding_mode)
         
         loss_2 = compute_smooth_loss(tgt_depth, tgt_img)
 
         # loss_2 = compute_depth_gradient_loss(tgt_depth, tgt_pseudo_depth)
-        #loss_ranking = compute_ranking_loss(tgt_depth, tgt_pseudo_depth, tgt_img)
+        loss_ranking = compute_maskRanking_loss(tgt_depth, tgt_pseudo_depth, tgt_valid_weight)
         # loss_ranking = torch.tensor(0).float().to(device)
 
         # # debug
@@ -348,12 +350,12 @@ def train(args, train_loader, disp_net, pose_net, stn_net, optimizer, epoch_size
         # plt.imshow(vis_gt)
         # plt.show()
 
-        loss = w1*loss_1 + w2*loss_2 + w3*loss_3 + w4*loss_rot_triplet + w5*loss_rot_supervised
+        loss = w1*loss_1 + w2*loss_2 + w3*loss_3 + w4*loss_rot_triplet + w5*loss_rot_supervised + loss_ranking
 
         if log_losses:
             train_writer.add_scalar('photometric_error', loss_1.item(), n_iter)
             train_writer.add_scalar('disparity_smoothness_loss', loss_2.item(), n_iter)
-            #train_writer.add_scalar('edge_ranking_loss', loss_ranking.item(), n_iter)
+            train_writer.add_scalar('edge_ranking_loss', loss_ranking.item(), n_iter)
             train_writer.add_scalar('geometry_consistency_loss', loss_3.item(), n_iter)
             train_writer.add_scalar('rot_triplet_loss', loss_rot_triplet.item(), n_iter)
             train_writer.add_scalar('rot_before_avg', rot_before.item() / len(ref_imgs), n_iter)
