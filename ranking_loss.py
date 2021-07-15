@@ -93,7 +93,7 @@ class MaskRanking_Loss(nn.Module):
         return log_loss + squared_loss
 
     def get_unreliable(self, tgt_valid_weight):
-        invalidMask = tgt_valid_weight < 0.75
+        invalidMask = tgt_valid_weight < 0.5
         return invalidMask
 
     def forward(self, pred_depth, gt_depth, tgt_valid_weight):
