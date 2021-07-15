@@ -78,6 +78,11 @@ def main():
     global best_error, n_iter, device
     args = parser.parse_args()
 
+    # #for debug
+    # args.pretrained_disp='/home/slbs/dgx2/checkpoints/baseline_noRanking/07-13-12:08/disp_model_best.pth.tar'
+    # args.pretrained_pose='/home/slbs/dgx2/checkpoints/baseline_noRanking/07-13-12:08/pose_model_best.pth.tar'
+    # args.pretrained_stn='/home/slbs/dgx2/checkpoints/baseline_noRanking/07-13-12:08/stn_model_best.pth.tar'
+
     timestamp = datetime.datetime.now().strftime("%m-%d-%H:%M")
     save_path = Path(args.name)
     args.save_path = 'checkpoints'/save_path/timestamp
@@ -335,10 +340,7 @@ def train(args, train_loader, disp_net, pose_net, stn_net, optimizer, epoch_size
                                                          args.with_mask, args.with_auto_mask, args.padding_mode)
         
         loss_2 = compute_smooth_loss(tgt_depth, tgt_img)
-
-        # loss_2 = compute_depth_gradient_loss(tgt_depth, tgt_pseudo_depth)
-        loss_ranking = compute_maskRanking_loss(tgt_depth, tgt_pseudo_depth)
-        # loss_ranking = torch.tensor(0).float().to(device)
+        loss_ranking = compute_maskRanking_loss(tgt_depth, tgt_pseudo_depth, tgt_valid_weight)
 
         # # debug
         # from matplotlib import pyplot as plt
@@ -355,7 +357,7 @@ def train(args, train_loader, disp_net, pose_net, stn_net, optimizer, epoch_size
         if log_losses:
             train_writer.add_scalar('photometric_error', loss_1.item(), n_iter)
             train_writer.add_scalar('disparity_smoothness_loss', loss_2.item(), n_iter)
-            train_writer.add_scalar('ranking_loss', loss_ranking.item(), n_iter)
+            train_writer.add_scalar('maskRanking_loss', loss_ranking.item(), n_iter)
             train_writer.add_scalar('geometry_consistency_loss', loss_3.item(), n_iter)
             train_writer.add_scalar('rot_triplet_loss', loss_rot_triplet.item(), n_iter)
             train_writer.add_scalar('rot_before_avg', rot_before.item() / len(ref_imgs), n_iter)
