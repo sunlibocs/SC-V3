@@ -4,6 +4,13 @@ from imageio import imread
 from path import Path
 import os
 import torch
+from scipy import sparse
+
+
+def load_sparse_depth(filename):
+    sparse_depth = sparse.load_npz(filename)
+    depth = sparse_depth.todense()
+    return np.array(depth)
 
 def crawl_folders(folders_list, dataset='nyu'):
         imgs = []
@@ -12,8 +19,8 @@ def crawl_folders(folders_list, dataset='nyu'):
             current_imgs = sorted(folder.files('*.jpg'))
             if dataset == 'nyu' or dataset == 'void':
                 current_depth = sorted((folder/'depth/').files('*.png'))
-            elif dataset == 'kitti':
-                current_depth = sorted(folder.files('*.npy'))
+            elif dataset == 'ddad' or dataset == 'kitti':
+                current_depth = sorted((folder/'depth/').files('*.npz'))
             imgs.extend(current_imgs)
             depths.extend(current_depth)
         return imgs, depths
@@ -46,8 +53,8 @@ class ValidationSet(data.Dataset):
 
         if self.dataset=='nyu':
             depth = torch.from_numpy(imread(self.depth[index]).astype(np.float32)).float()/5000
-        elif self.dataset=='kitti':
-            depth = torch.from_numpy(np.load(self.depth[index]).astype(np.float32))
+        elif self.dataset=='kitti' or self.dataset=='ddad':
+            depth = torch.from_numpy(load_sparse_depth(self.depth[index]).astype(np.float32))
         elif self.dataset=='void':
             depth = torch.from_numpy(imread(self.depth[index]).astype(np.float32)).float()/256
 
