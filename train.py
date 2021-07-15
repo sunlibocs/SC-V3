@@ -335,7 +335,7 @@ def train(args, train_loader, disp_net, pose_net, stn_net, optimizer, epoch_size
                                                          poses, poses_inv, args.num_scales, args.with_ssim,
                                                          args.with_mask, args.with_auto_mask, args.padding_mode)
         
-        loss_2 = compute_smooth_loss(tgt_depth, tgt_img)
+        # loss_2 = compute_smooth_loss(tgt_depth, tgt_img)
 
         # loss_ranking = compute_ranking_loss(tgt_depth, tgt_pseudo_depth, tgt_img)
         loss_plane = compute_NormalSmooth_loss(tgt_depth, tgt_pseudo_plane, intrinsics, image_info)
@@ -351,11 +351,11 @@ def train(args, train_loader, disp_net, pose_net, stn_net, optimizer, epoch_size
         # plt.show()
 
         # loss = w1*loss_1 + w2*loss_2 + w3*loss_3 + w4*loss_rot_triplet + w5*loss_rot_supervised + loss_ranking + loss_plane
-        loss = w1*loss_1 + w2*loss_2 + w3*loss_3 + w4*loss_rot_triplet + w5*loss_rot_supervised + loss_plane
+        loss = w1*loss_1 + w3*loss_3 + w4*loss_rot_triplet + w5*loss_rot_supervised + loss_plane
 
         if log_losses:
             train_writer.add_scalar('photometric_error', loss_1.item(), n_iter)
-            train_writer.add_scalar('disparity_smoothness_loss', loss_2.item(), n_iter)
+            # train_writer.add_scalar('disparity_smoothness_loss', loss_2.item(), n_iter)
             # train_writer.add_scalar('edge_ranking_loss', loss_ranking.item(), n_iter)
             train_writer.add_scalar('plane_loss', loss_plane.item(), n_iter)
             train_writer.add_scalar('geometry_consistency_loss', loss_3.item(), n_iter)
@@ -383,7 +383,7 @@ def train(args, train_loader, disp_net, pose_net, stn_net, optimizer, epoch_size
 
         with open(args.save_path/args.log_full, 'a') as csvfile:
             writer = csv.writer(csvfile, delimiter='\t')
-            writer.writerow([loss.item(), loss_1.item(), loss_2.item(), loss_3.item()])
+            writer.writerow([loss.item(), loss_1.item(), loss_3.item()])
         logger.train_bar.update(i+1)
         if i % args.print_freq == 0:
             logger.train_writer.write('Train: Time {} Data {} Loss {}'.format(batch_time, data_time, losses))
