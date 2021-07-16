@@ -77,8 +77,8 @@ n_iter = 0
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 torch.autograd.set_detect_anomaly(True)
 
-from ranking_loss import MaskRanking_Loss
-compute_maskRanking_loss = MaskRanking_Loss().to(device)
+from ranking_loss import GredRanking_Loss
+compute_gredRanking_loss = GredRanking_Loss().to(device)
 
 def main():
     global best_error, n_iter, device
@@ -294,7 +294,7 @@ def train(args, train_loader, disp_net, pose_net, optimizer, epoch_size, logger,
 
         loss_2 = compute_smooth_loss(tgt_depth, tgt_img)
 
-        loss_ranking = compute_maskRanking_loss(tgt_depth, tgt_pseudo_depth, tgt_valid_weight)
+        loss_ranking = compute_gredRanking_loss(tgt_depth, tgt_pseudo_depth, tgt_img)
         # loss_ranking = torch.tensor(0).float().to(device)
 
         loss = w1 * loss_1 + w2 * loss_2 + w3 * loss_3 + loss_ranking

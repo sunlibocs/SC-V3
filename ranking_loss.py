@@ -5,9 +5,9 @@ import torch.nn.functional as F
 # import matplotlib.pyplot as plt
 import os
 
-class MaskRanking_Loss(nn.Module):
+class GredRanking_Loss(nn.Module):
     def __init__(self, sample_ratio=0.1, filter_depth=1e-8):
-        super(MaskRanking_Loss, self).__init__()
+        super(GredRanking_Loss, self).__init__()
         self.sample_ratio = sample_ratio
         self.filter_depth = filter_depth
 
@@ -92,27 +92,19 @@ class MaskRanking_Loss(nn.Module):
         squared_loss = torch.mean(pred_depth[target == 0] ** 2)  # if pred depth is not zero adds to loss
         return log_loss + squared_loss
 
-    def get_unreliable(self, tgt_valid_weight):
-        # invalidMask = tgt_valid_weight < 0.75
-        B, C, H, W = tgt_valid_weight.shape
-        unreliable_percent = 0.5
-        invalidMask = torch.ones_like(tgt_valid_weight)
-        for bs in range(B):
-            weight = tgt_valid_weight[bs]
-            maskIv = invalidMask[bs]
-            weight = weight.view(-1)
-            maskIv = maskIv.view(-1)
+    def get_lowTexture(self, tgt_img):
+        grad_img_x = torch.mean(torch.abs(tgt_img[:, :, :, :-1] - tgt_img[:, :, :, 1:]), 1, keepdim=True)
+        grad_img_y = torch.mean(torch.abs(tgt_img[:, :, :-1, :] - tgt_img[:, :, 1:, :]), 1, keepdim=True)
+        textureWeight= torch.zeros_like(tgt_img[:, :1, :, :])
+        textureWeight[:, :, :, :-1] = textureWeight[:, :, :, :-1] + grad_img_x
+        textureWeight[:, :, :-1, :] = textureWeight[:, :, :-1, :] + grad_img_y
+        textureWeight = textureWeight/2.0
+        return textureWeight < textureWeight.mean()
 
-            weight_sorted, indices = torch.sort(weight)
-            indices[:int(unreliable_percent*H*W)] = indices[H*W-1] #each item in indices represent an index(valid)
-            maskIv[indices] = 0 #use indices for the selection. mask=0 -> valid
+    def forward(self, pred_depth, gt_depth, tgt_img):
 
-        return invalidMask > 0
-
-    def forward(self, pred_depth, gt_depth, tgt_valid_weight):
-
-        unreliableMask = self.get_unreliable(tgt_valid_weight)
-        za, zb, target = self.generate_target(gt_depth, pred_depth, unreliableMask)
+        lowTextureMask = self.get_lowTexture(tgt_img) # lowTextureMask 1-> low texture
+        za, zb, target = self.generate_target(gt_depth, pred_depth, lowTextureMask)
         total_loss = self.cal_ranking_loss(za, zb, target)
 
         return total_loss
