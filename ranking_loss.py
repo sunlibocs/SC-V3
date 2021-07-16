@@ -96,19 +96,18 @@ class MaskRanking_Loss(nn.Module):
         # invalidMask = tgt_valid_weight < 0.75
         B, C, H, W = tgt_valid_weight.shape
         unreliable_percent = 0.5
-        invalidMask = None
+        invalidMask = torch.ones_like(tgt_valid_weight)
         for bs in range(B):
-            weight = tgt_valid_weight[0]
+            weight = tgt_valid_weight[bs]
+            maskIv = invalidMask[bs]
             weight = weight.view(-1)
-            weight_sorted, indices = torch.sort(weight)
-            thr_value =  weight_sorted[int(unreliable_percent*H*W)]
-            tempInvalidMask = tgt_valid_weight[bs:bs+1, :, :, :] < thr_value
-            if bs == 0:
-                invalidMask = tempInvalidMask
-            else:
-                invalidMask = torch.cat((invalidMask, tempInvalidMask), dim=0)
+            maskIv = maskIv.view(-1)
 
-        return invalidMask
+            weight_sorted, indices = torch.sort(weight)
+            indices[:int(unreliable_percent*H*W)] = indices[H*W-1] #each item in indices represent an index(valid)
+            maskIv[indices] = 0 #use indices for the selection. mask=0 -> valid
+
+        return invalidMask > 0
 
     def forward(self, pred_depth, gt_depth, tgt_valid_weight):
 
