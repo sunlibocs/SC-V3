@@ -93,7 +93,21 @@ class MaskRanking_Loss(nn.Module):
         return log_loss + squared_loss
 
     def get_unreliable(self, tgt_valid_weight):
-        invalidMask = tgt_valid_weight < 0.75
+        # invalidMask = tgt_valid_weight < 0.75
+        B, C, H, W = tgt_valid_weight.shape
+        unreliable_percent = 0.5
+        invalidMask = None
+        for bs in range(B):
+            weight = tgt_valid_weight[0]
+            weight = weight.view(-1)
+            weight_sorted, indices = torch.sort(weight)
+            thr_value =  weight_sorted[int(unreliable_percent*H*W)]
+            tempInvalidMask = tgt_valid_weight[bs:bs+1, :, :, :] < thr_value
+            if bs == 0:
+                invalidMask = tempInvalidMask
+            else:
+                invalidMask = torch.cat((invalidMask, tempInvalidMask), dim=0)
+
         return invalidMask
 
     def forward(self, pred_depth, gt_depth, tgt_valid_weight):
