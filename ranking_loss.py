@@ -5,9 +5,9 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import os
 
-class MaskRanking_Loss(nn.Module):
+class Ranking_Loss(nn.Module):
     def __init__(self, sample_ratio=0.1, filter_depth=1e-8):
-        super(MaskRanking_Loss, self).__init__()
+        super(Ranking_Loss, self).__init__()
         self.sample_ratio = sample_ratio
         self.filter_depth = filter_depth
 
