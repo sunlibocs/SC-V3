@@ -38,20 +38,22 @@ class GredRanking_Loss(nn.Module):
     #
     #     return pred[mask_A][mask_ignore], pred[mask_B][mask_ignore], target
 
-    def generate_target(self, depth, pred, invalid_mask, theta=0.02):
+    def generate_target(self, depth, pred, textureWeight, theta=0.02):
         B, C, H, W = depth.shape
-        valid_mask = ~invalid_mask
+        #valid_mask = ~invalid_mask
         gt_inval, gt_val, pred_inval, pred_val = None, None, None, None
         for bs in range(B):
             gt_invalid = depth[bs, :, :, :]
             pred_invalid = pred[bs, :, :, :]
-            mask_invalid = invalid_mask[bs, :, :, :]  # select the area which belongs to invalid/occlusion
+            #mask_invalid = invalid_mask[bs, :, :, :]  # select the area which belongs to low texture
+            mask_invalid = textureWeight[bs, :, :, :] < textureWeight[bs, :, :, :].mean()
+            mask_valid = ~mask_invalid
             gt_invalid = gt_invalid[mask_invalid]
             pred_invalid = pred_invalid[mask_invalid]
 
             gt_valid = depth[bs, :, :, :]
             pre_valid = pred[bs, :, :, :]
-            mask_valid = valid_mask[bs, :, :, :]  # select the area which belongs to valid/reliable
+            #mask_valid = valid_mask[bs, :, :, :]  # select the area which belongs to valid/reliable texture
             gt_valid = gt_valid[mask_valid]
             pre_valid = pre_valid[mask_valid]
             # generate the sample index. index range -> (0, len(gt_valid)). The amount -> gt_invalid.size()
@@ -99,12 +101,12 @@ class GredRanking_Loss(nn.Module):
         textureWeight[:, :, :, :-1] = textureWeight[:, :, :, :-1] + grad_img_x
         textureWeight[:, :, :-1, :] = textureWeight[:, :, :-1, :] + grad_img_y
         textureWeight = textureWeight/2.0
-        return textureWeight < textureWeight.mean()
+        return textureWeight
 
     def forward(self, pred_depth, gt_depth, tgt_img):
 
-        lowTextureMask = self.get_lowTexture(tgt_img) # lowTextureMask 1-> low texture
-        za, zb, target = self.generate_target(gt_depth, pred_depth, lowTextureMask)
+        textureWeight = self.get_lowTexture(tgt_img) # lowTextureMask 1-> low texture
+        za, zb, target = self.generate_target(gt_depth, pred_depth, textureWeight)
         total_loss = self.cal_ranking_loss(za, zb, target)
 
         return total_loss
