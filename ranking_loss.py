@@ -11,34 +11,35 @@ class MaskRanking_Loss(nn.Module):
         self.sample_ratio = sample_ratio
         self.filter_depth = filter_depth
 
-    # def generate_target(self, depth, pred, tgt_valid_weight, theta=0.02):
-    #     B, C, H, W = depth.shape
-    #     mask_A = torch.rand(C, H, W).cuda()
-    #     mask_A[mask_A >= (1 - self.sample_ratio)] = 1
-    #     mask_A[mask_A < (1 - self.sample_ratio)] = 0
-    #     idx = torch.randperm(mask_A.nelement())
-    #     mask_B = mask_A.view(-1)[idx].view(mask_A.size())
-    #     mask_A = mask_A.repeat(B, 1, 1).view(depth.shape) == 1
-    #     mask_B = mask_B.repeat(B, 1, 1).view(depth.shape) == 1
-    #     za_gt = depth[mask_A]
-    #     zb_gt = depth[mask_B]
-    #     mask_ignoreb = zb_gt > self.filter_depth
-    #     mask_ignorea = za_gt > self.filter_depth
-    #     mask_ignore = mask_ignorea | mask_ignoreb
-    #     za_gt = za_gt[mask_ignore]
-    #     zb_gt = zb_gt[mask_ignore]
-    #
-    #     flag1 = za_gt / zb_gt
-    #     flag2 = zb_gt / za_gt
-    #     mask1 = flag1 > 1 + theta
-    #     mask2 = flag2 > 1 + theta
-    #     target = torch.zeros(za_gt.size()).cuda()
-    #     target[mask1] = 1
-    #     target[mask2] = -1
-    #
-    #     return pred[mask_A][mask_ignore], pred[mask_B][mask_ignore], target
+    def generate_global_target(self, depth, pred, theta=0.02):
+        B, C, H, W = depth.shape
+        mask_A = torch.rand(C, H, W).cuda()
+        mask_A[mask_A >= (1 - self.sample_ratio)] = 1
+        mask_A[mask_A < (1 - self.sample_ratio)] = 0
+        idx = torch.randperm(mask_A.nelement())
+        mask_B = mask_A.view(-1)[idx].view(mask_A.size())
+        mask_A = mask_A.repeat(B, 1, 1).view(depth.shape) == 1
+        mask_B = mask_B.repeat(B, 1, 1).view(depth.shape) == 1
+        za_gt = depth[mask_A]
+        zb_gt = depth[mask_B]
+        mask_ignoreb = zb_gt > self.filter_depth
+        mask_ignorea = za_gt > self.filter_depth
+        mask_ignore = mask_ignorea | mask_ignoreb
+        za_gt = za_gt[mask_ignore]
+        zb_gt = zb_gt[mask_ignore]
 
-    def generate_target(self, depth, pred, invalid_mask, theta=0.02):
+        flag1 = za_gt / zb_gt
+        flag2 = zb_gt / za_gt
+        mask1 = flag1 > 1 + theta
+        mask2 = flag2 > 1 + theta
+        target = torch.zeros(za_gt.size()).cuda()
+        target[mask1] = 1
+        target[mask2] = -1
+
+        return pred[mask_A][mask_ignore], pred[mask_B][mask_ignore], target
+
+
+    def generate_percentMask_target(self, depth, pred, invalid_mask, theta=0.02):
         B, C, H, W = depth.shape
         valid_mask = ~invalid_mask
         gt_inval, gt_val, pred_inval, pred_val = None, None, None, None
@@ -112,7 +113,11 @@ class MaskRanking_Loss(nn.Module):
     def forward(self, pred_depth, gt_depth, tgt_valid_weight):
 
         unreliableMask = self.get_unreliable(tgt_valid_weight)
-        za, zb, target = self.generate_target(gt_depth, pred_depth, unreliableMask)
-        total_loss = self.cal_ranking_loss(za, zb, target)
+        za_1, zb_1, target_1 = self.generate_percentMask_target(gt_depth, pred_depth, unreliableMask)
+        loss_global = self.cal_ranking_loss(za_1, zb_1, target_1)
 
+        za_2, zb_2, target_2 = self.generate_global_target(gt_depth, pred_depth)
+        loss_percentMask = self.cal_ranking_loss(za_2, zb_2, target_2)
+
+        total_loss = loss_global + loss_percentMask
         return total_loss
