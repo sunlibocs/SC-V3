@@ -119,5 +119,5 @@ class MaskRanking_Loss(nn.Module):
         za_2, zb_2, target_2 = self.generate_global_target(gt_depth, pred_depth)
         loss_percentMask = self.cal_ranking_loss(za_2, zb_2, target_2)
 
-        total_loss = loss_global + loss_percentMask
+        total_loss = (loss_global + loss_percentMask)/2.0
         return total_loss
