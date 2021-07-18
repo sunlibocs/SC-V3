@@ -48,6 +48,7 @@ class Ranking_Loss(nn.Module):
         pred_depth = z_A - z_B
         log_loss = torch.mean(torch.log(1 + torch.exp(-target[target != 0] * pred_depth[target != 0])))
         #squared_loss = torch.mean(pred_depth[target == 0] ** 2)  # if pred depth is not zero adds to loss
+        log_loss = log_loss/2.0
         return log_loss
 
     def forward(self, pred_depth, gt_depth):
