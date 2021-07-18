@@ -11,7 +11,7 @@ class Ranking_Loss(nn.Module):
         self.sample_ratio = sample_ratio
         self.filter_depth = filter_depth
 
-    def generate_target(self, depth, pred, theta=0.02):
+    def generate_target(self, depth, pred, theta=0.15):
         B, C, H, W = depth.shape
         mask_A = torch.rand(C, H, W).cuda()
         mask_A[mask_A >= (1 - self.sample_ratio)] = 1
@@ -47,8 +47,8 @@ class Ranking_Loss(nn.Module):
         """
         pred_depth = z_A - z_B
         log_loss = torch.mean(torch.log(1 + torch.exp(-target[target != 0] * pred_depth[target != 0])))
-        squared_loss = torch.mean(pred_depth[target == 0] ** 2)  # if pred depth is not zero adds to loss
-        return log_loss + squared_loss
+        #squared_loss = torch.mean(pred_depth[target == 0] ** 2)  # if pred depth is not zero adds to loss
+        return log_loss
 
     def forward(self, pred_depth, gt_depth):
         za, zb, target = self.generate_target(gt_depth, pred_depth)
