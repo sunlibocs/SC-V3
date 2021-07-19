@@ -41,7 +41,7 @@ class MaskRanking_Loss(nn.Module):
 
     def generate_percentMask_target(self, depth, pred, invalid_mask, theta=0.15):
         B, C, H, W = depth.shape
-        valid_mask = ~invalid_mask
+        valid_mask = ~invalid_mask + invalid_mask##The whole image. invalid(A) ~invalid(B)
         gt_inval, gt_val, pred_inval, pred_val = None, None, None, None
         for bs in range(B):
             gt_invalid = depth[bs, :, :, :]
@@ -94,9 +94,8 @@ class MaskRanking_Loss(nn.Module):
         return log_loss
 
     def get_unreliable(self, tgt_valid_weight):
-        # invalidMask = tgt_valid_weight < 0.75
         B, C, H, W = tgt_valid_weight.shape
-        unreliable_percent = 0.5
+        unreliable_percent = 0.1
         invalidMask = torch.ones_like(tgt_valid_weight)
         for bs in range(B):
             weight = tgt_valid_weight[bs]
@@ -106,7 +105,7 @@ class MaskRanking_Loss(nn.Module):
 
             weight_sorted, indices = torch.sort(weight)
             indices[:int(unreliable_percent*H*W)] = indices[H*W-1] #each item in indices represent an index(valid)
-            maskIv[indices] = 0 #use indices for the selection. mask=0 -> valid
+            maskIv[indices] = 0 #use indices for the selection. mask=0 -> valid.    mask=1 -> invalid
 
         return invalidMask > 0
 
