@@ -41,7 +41,7 @@ class MaskRanking_Loss(nn.Module):
 
     def generate_percentMask_target(self, depth, pred, invalid_mask, theta=0.15):
         B, C, H, W = depth.shape
-        valid_mask = ~invalid_mask + invalid_mask##The whole image. invalid(A) ~invalid(B)
+        valid_mask = ~invalid_mask ## invalid(A) ~invalid(B)
         gt_inval, gt_val, pred_inval, pred_val = None, None, None, None
         for bs in range(B):
             gt_invalid = depth[bs, :, :, :]
