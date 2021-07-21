@@ -11,7 +11,7 @@ class MaskRanking_Loss(nn.Module):
         self.sample_ratio = sample_ratio
         self.filter_depth = filter_depth
 
-    def generate_global_target(self, depth, pred, theta=0.15):
+    def generate_global_target(self, depth, pred, theta=0.22):
         B, C, H, W = depth.shape
         mask_A = torch.rand(C, H, W).cuda()
         mask_A[mask_A >= (1 - self.sample_ratio)] = 1
@@ -39,7 +39,7 @@ class MaskRanking_Loss(nn.Module):
         return pred[mask_A][mask_ignore], pred[mask_B][mask_ignore], target
 
 
-    def generate_percentMask_target(self, depth, pred, invalid_mask, theta=0.15):
+    def generate_percentMask_target(self, depth, pred, invalid_mask, theta=0.22):
         B, C, H, W = depth.shape
         valid_mask = ~invalid_mask
         gt_inval, gt_val, pred_inval, pred_val = None, None, None, None
