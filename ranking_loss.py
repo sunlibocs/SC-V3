@@ -46,9 +46,9 @@ class Ranking_Loss(nn.Module):
         ground_truth: Relative depth between A and B (-1, 0, 1)
         """
         pred_depth = z_A - z_B
-        log_loss = torch.mean(torch.log(1 + torch.exp(-target[target != 0] * pred_depth[target != 0])))
-        #squared_loss = torch.mean(pred_depth[target == 0] ** 2)  # if pred depth is not zero adds to loss
-        return log_loss
+        #log_loss = torch.mean(torch.log(1 + torch.exp(-target[target != 0] * pred_depth[target != 0])))
+        squared_loss = torch.mean(pred_depth[target == 0] ** 2)  # if pred depth is not zero adds to loss
+        return squared_loss
 
     def forward(self, pred_depth, gt_depth):
         za, zb, target = self.generate_target(gt_depth, pred_depth)
