@@ -11,4 +11,4 @@ python train_org.py $TRAIN_SET \
 --with-pretrain 1 \
 --log-output --with-gt \
 --dataset ddad \
---name pseudo_PercentGredMaskRankingDDAD_0.5_Pure2_NoSqLoss
+--name pseudo_PercentGredRankingDDAD_0.5_Pure2_NoSqLoss

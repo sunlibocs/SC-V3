@@ -121,12 +121,12 @@ class MaskRanking_Loss(nn.Module):
 
     def forward(self, pred_depth, gt_depth, tgt_valid_weight, tgt_img):
 
-        unreliableMask = self.get_unreliable(tgt_valid_weight)
-        za_1, zb_1, target_1 = self.generate_percentMask_target(gt_depth, pred_depth, unreliableMask)
-        loss_global = self.cal_ranking_loss(za_1, zb_1, target_1)
+        #unreliableMask = self.get_unreliable(tgt_valid_weight)
+        #za_1, zb_1, target_1 = self.generate_percentMask_target(gt_depth, pred_depth, unreliableMask)
+        #loss_percentMask = self.cal_ranking_loss(za_1, zb_1, target_1)
 
         za_2, zb_2, target_2 = self.generate_global_target(gt_depth, pred_depth)
-        loss_percentMask = self.cal_ranking_loss(za_2, zb_2, target_2)
+        loss_global = self.cal_ranking_loss(za_2, zb_2, target_2)
 
         ## textture
         textureWeight = self.get_textureWeight(tgt_img) # lowTextureMask 1-> low texture
@@ -134,5 +134,5 @@ class MaskRanking_Loss(nn.Module):
         za_3, zb_3, target_3 = self.generate_percentMask_target(gt_depth, pred_depth, lowTextureMask)
         loss_texture = self.cal_ranking_loss(za_3, zb_3, target_3)
 
-        total_loss = (loss_global + loss_percentMask + loss_texture)/3.0
+        total_loss = (loss_global + loss_texture)/2.0
         return total_loss
