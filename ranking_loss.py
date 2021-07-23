@@ -110,7 +110,16 @@ class MaskRanking_Loss(nn.Module):
 
         return invalidMask > 0
 
-    def forward(self, pred_depth, gt_depth, tgt_valid_weight):
+    def get_textureWeight(self, tgt_img):
+        grad_img_x = torch.mean(torch.abs(tgt_img[:, :, :, :-1] - tgt_img[:, :, :, 1:]), 1, keepdim=True)
+        grad_img_y = torch.mean(torch.abs(tgt_img[:, :, :-1, :] - tgt_img[:, :, 1:, :]), 1, keepdim=True)
+        textureWeight = torch.zeros_like(tgt_img[:, :1, :, :])
+        textureWeight[:, :, :, :-1] = textureWeight[:, :, :, :-1] + grad_img_x
+        textureWeight[:, :, :-1, :] = textureWeight[:, :, :-1, :] + grad_img_y
+        textureWeight = textureWeight / 2.0
+        return textureWeight
+
+    def forward(self, pred_depth, gt_depth, tgt_valid_weight, tgt_img):
 
         unreliableMask = self.get_unreliable(tgt_valid_weight)
         za_1, zb_1, target_1 = self.generate_percentMask_target(gt_depth, pred_depth, unreliableMask)
@@ -119,5 +128,11 @@ class MaskRanking_Loss(nn.Module):
         za_2, zb_2, target_2 = self.generate_global_target(gt_depth, pred_depth)
         loss_percentMask = self.cal_ranking_loss(za_2, zb_2, target_2)
 
-        total_loss = (loss_global + loss_percentMask)/2.0
+        ## textture
+        textureWeight = self.get_textureWeight(tgt_img) # lowTextureMask 1-> low texture
+        lowTextureMask = self.get_unreliable(textureWeight)
+        za_3, zb_3, target_3 = self.generate_percentMask_target(gt_depth, pred_depth, lowTextureMask)
+        loss_texture = self.cal_ranking_loss(za_3, zb_3, target_3)
+
+        total_loss = (loss_global + loss_percentMask + loss_texture)/3.0
         return total_loss

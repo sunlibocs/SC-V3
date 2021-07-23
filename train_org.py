@@ -294,7 +294,7 @@ def train(args, train_loader, disp_net, pose_net, optimizer, epoch_size, logger,
 
         loss_2 = compute_smooth_loss(tgt_depth, tgt_img)
 
-        loss_ranking = compute_maskRanking_loss(tgt_depth, tgt_pseudo_depth, tgt_valid_weight)
+        loss_ranking = compute_maskRanking_loss(tgt_depth, tgt_pseudo_depth, tgt_valid_weight, tgt_img)
         # loss_ranking = torch.tensor(0).float().to(device)
 
         loss = w1 * loss_1 + w2 * loss_2 + w3 * loss_3 + loss_ranking
