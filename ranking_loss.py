@@ -5,9 +5,9 @@ import torch.nn.functional as F
 # import matplotlib.pyplot as plt
 import os
 
-class MaskRanking_Loss(nn.Module):
+class Ranking_Loss(nn.Module):
     def __init__(self, sample_ratio=0.1, filter_depth=1e-8):
-        super(MaskRanking_Loss, self).__init__()
+        super(Ranking_Loss, self).__init__()
         self.sample_ratio = sample_ratio
         self.filter_depth = filter_depth
 
@@ -89,9 +89,11 @@ class MaskRanking_Loss(nn.Module):
         ground_truth: Relative depth between A and B (-1, 0, 1)
         """
         pred_depth = z_A - z_B
-        log_loss = torch.mean(torch.log(1 + torch.exp(-target[target != 0] * pred_depth[target != 0])))
+        #log_loss = torch.mean(torch.log(1 + torch.exp(-target[target != 0] * pred_depth[target != 0])))
         #squared_loss = torch.mean(pred_depth[target == 0] ** 2)  # if pred depth is not zero adds to loss
-        return log_loss
+        log_loss = torch.sum(torch.log(1 + torch.exp(-target[target != 0] * pred_depth[target != 0])))
+        pointNum = len(target[target != 0])
+        return log_loss, pointNum
 
     def get_unreliable(self, tgt_valid_weight):
         # invalidMask = tgt_valid_weight < 0.75
@@ -120,19 +122,20 @@ class MaskRanking_Loss(nn.Module):
         return textureWeight
 
     def forward(self, pred_depth, gt_depth, tgt_valid_weight, tgt_img):
-
+        # dynamic mask
         unreliableMask = self.get_unreliable(tgt_valid_weight)
         za_1, zb_1, target_1 = self.generate_percentMask_target(gt_depth, pred_depth, unreliableMask)
-        loss_global = self.cal_ranking_loss(za_1, zb_1, target_1)
+        loss_percentMask, pointNum_1 = self.cal_ranking_loss(za_1, zb_1, target_1)
 
+        #global
         za_2, zb_2, target_2 = self.generate_global_target(gt_depth, pred_depth)
-        loss_percentMask = self.cal_ranking_loss(za_2, zb_2, target_2)
+        loss_global, pointNum_2 = self.cal_ranking_loss(za_2, zb_2, target_2)
 
-        ## textture
+        ## texture
         textureWeight = self.get_textureWeight(tgt_img) # lowTextureMask 1-> low texture
         lowTextureMask = self.get_unreliable(textureWeight)
         za_3, zb_3, target_3 = self.generate_percentMask_target(gt_depth, pred_depth, lowTextureMask)
-        loss_texture = self.cal_ranking_loss(za_3, zb_3, target_3)
+        loss_texture, pointNum_3 = self.cal_ranking_loss(za_3, zb_3, target_3)
 
-        total_loss = (loss_global + loss_percentMask + loss_texture)/3.0
+        total_loss = (loss_global + loss_percentMask + loss_texture)/(pointNum_1 + pointNum_2 + pointNum_3)
         return total_loss
