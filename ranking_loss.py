@@ -99,6 +99,7 @@ class Ranking_Loss(nn.Module):
         # invalidMask = tgt_valid_weight < 0.75
         B, C, H, W = tgt_valid_weight.shape
         unreliable_percent = 0.5
+        unreliable_percent_2 = 0.2 ## unreliable_percent *  unreliable_percent_2 is the final
         invalidMask = torch.ones_like(tgt_valid_weight)
         for bs in range(B):
             weight = tgt_valid_weight[bs]
@@ -107,8 +108,12 @@ class Ranking_Loss(nn.Module):
             maskIv = maskIv.view(-1)
 
             weight_sorted, indices = torch.sort(weight)
-            indices[:int(unreliable_percent*H*W)] = indices[H*W-1] #each item in indices represent an index(valid)
-            maskIv[indices] = 0 #use indices for the selection. mask=0 -> valid
+            len1 = int(unreliable_percent*H*W) #The 'invalid' element amount for the first selection
+            len2 = int(len1*unreliable_percent_2) #The 'invalid' element amount for the second selection
+            idx = torch.randint(0, len1, [len2])
+            indices[idx] = indices[H*W-1] #set to the last index to avoid being selected
+
+            maskIv[indices] = 0 # mask=0 -> valid
 
         return invalidMask > 0
 

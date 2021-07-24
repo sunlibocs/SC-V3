@@ -11,4 +11,4 @@ python train_org.py $TRAIN_SET \
 --with-pretrain 1 \
 --log-output --with-gt \
 --dataset ddad \
---name ep100_gredMaskGloablRanking
+--name ep100_gredMaskGloablRanking_sample2
