@@ -128,14 +128,14 @@ class Ranking_Loss(nn.Module):
         loss_percentMask, pointNum_1 = self.cal_ranking_loss(za_1, zb_1, target_1)
 
         #global
-        za_2, zb_2, target_2 = self.generate_global_target(gt_depth, pred_depth)
-        loss_global, pointNum_2 = self.cal_ranking_loss(za_2, zb_2, target_2)
+        #za_2, zb_2, target_2 = self.generate_global_target(gt_depth, pred_depth)
+        #loss_global, pointNum_2 = self.cal_ranking_loss(za_2, zb_2, target_2)
 
-        ## texture
+        ## texture ep100_gredMaskRanking
         textureWeight = self.get_textureWeight(tgt_img) # lowTextureMask 1-> low texture
         lowTextureMask = self.get_unreliable(textureWeight)
         za_3, zb_3, target_3 = self.generate_percentMask_target(gt_depth, pred_depth, lowTextureMask)
         loss_texture, pointNum_3 = self.cal_ranking_loss(za_3, zb_3, target_3)
 
-        total_loss = (loss_global + loss_percentMask + loss_texture)/(pointNum_1 + pointNum_2 + pointNum_3)
+        total_loss = (loss_percentMask + loss_texture)/(pointNum_1 + pointNum_3)
         return total_loss
