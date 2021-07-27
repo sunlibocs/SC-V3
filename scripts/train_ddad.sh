@@ -11,4 +11,4 @@ python train_org.py $TRAIN_SET \
 --with-pretrain 1 \
 --log-output --with-gt \
 --dataset ddad \
---name ep100_NormSmooth_GlobalRanking_r0.1
+--nameep100_NormSmooth_GlobalRanking_r0.01
