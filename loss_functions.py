@@ -4,9 +4,31 @@ from torch import nn
 import torch.nn.functional as F
 from inverse_warp import inverse_warp2, inverse_warp
 import numpy as np
+from surface_normal import *
 import math
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+
+class Image_Info():
+    def __init__(self, height, width):
+        x_row = np.arange(0, width)
+        x = np.tile(x_row, (height, 1))
+        x = x[np.newaxis, :, :]
+        x = x.astype(np.float32)
+        x = torch.from_numpy(x.copy()).cuda()
+        # u_u0 = x - width / 2.0
+        y_col = np.arange(0, height)  # y_col = np.arange(0, height)
+        y = np.tile(y_col, (width, 1)).T
+        y = y[np.newaxis, :, :]
+        y = y.astype(np.float32)
+        y = torch.from_numpy(y.copy()).cuda()
+        # v_v0 = y - height / 2.0
+        # return u_u0, v_v0
+        self.xIndex =  x
+        self.yIndex = y
+
+    def getIndex(self):
+        return self.xIndex, self.yIndex
 
 
 class SSIM(nn.Module):
@@ -138,6 +160,33 @@ def compute_smooth_loss(tgt_depth, tgt_img):
         return grad_disp_x.mean() + grad_disp_y.mean()
 
     loss = get_smooth_loss(tgt_depth, tgt_img)
+
+    return loss
+
+
+def get_normalSmooth_loss(tgt_normal, tgt_pseudo_normal):
+    diff = torch.abs(tgt_normal - tgt_pseudo_normal)
+    loss = torch.mean(diff)
+    return loss
+
+def compute_NormalSmooth_loss(tgt_depth, tgt_pseudo_depth, intrinsics, image_info):
+    fx = intrinsics[:, 0:1, 0:1] # fx
+    fy = intrinsics[:, 1:2, 1:2] # fy
+    u0 = intrinsics[:, 0:1, 2:3]
+    v0 = intrinsics[:, 1:2, 2:3]
+    b, c, h, w = tgt_depth.shape
+    fx = fx.unsqueeze(0).permute(1, 2, 3, 0).expand(-1, c, h, w) # b c h w
+    fy = fy.unsqueeze(0).permute(1, 2, 3, 0).expand(-1, c, h, w) # b c h w
+    u0 = u0.unsqueeze(0).permute(1, 2, 3, 0).expand(-1, c, h, w) # b c h w
+    v0 = v0.unsqueeze(0).permute(1, 2, 3, 0).expand(-1, c, h, w) # b c h w
+    xIndex_p, yIndex_p = image_info.getIndex()
+    u_u0 = xIndex_p.unsqueeze(0).expand(b, -1, -1, -1) - u0
+    v_v0 = yIndex_p.unsqueeze(0).expand(b, -1, -1, -1)  - v0
+
+    tgt_normal = surface_normal_from_depth(tgt_depth, fx, fy, u_u0, v_v0)
+    tgt_pseudo_normal = surface_normal_from_depth(tgt_pseudo_depth.cuda(), fx, fy, u_u0, v_v0)
+
+    loss = get_normalSmooth_loss(tgt_normal, tgt_pseudo_normal)
 
     return loss
 

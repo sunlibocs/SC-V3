@@ -16,7 +16,7 @@ import custom_transforms
 from utils import tensor2array, save_checkpoint
 from datasets.sequence_folders import SequenceFolder
 from datasets.pair_folders import PairFolder
-from loss_functions import compute_smooth_loss, compute_photo_and_geometry_loss, compute_errors
+from loss_functions import compute_smooth_loss, compute_photo_and_geometry_loss, compute_errors, Image_Info, compute_NormalSmooth_loss
 from logger import TermLogger, AverageMeter
 from tensorboardX import SummaryWriter
 
@@ -79,6 +79,7 @@ torch.autograd.set_detect_anomaly(True)
 
 from ranking_loss import Ranking_Loss
 compute_ranking_loss = Ranking_Loss().to(device)
+image_info = None
 
 def main():
     global best_error, n_iter, device
@@ -114,7 +115,8 @@ def main():
     elif args.dataset == 'ddad':
         training_size = [384, 640]
         #  training_size = [384//2, 640//2]
-
+    global image_info
+    image_info = Image_Info(training_size[0], training_size[1])
     train_transform = custom_transforms.Compose([
         custom_transforms.RandomHorizontalFlip(),
         custom_transforms.RandomScaleCrop(),
@@ -292,17 +294,19 @@ def train(args, train_loader, disp_net, pose_net, optimizer, epoch_size, logger,
                                                          poses, poses_inv, args.num_scales, args.with_ssim,
                                                          args.with_mask, args.with_auto_mask, args.padding_mode)
 
-        loss_2 = compute_smooth_loss(tgt_depth, tgt_img)
+        #loss_2 = compute_smooth_loss(tgt_depth, tgt_img)
+        #loss_ranking = compute_ranking_loss(tgt_depth, tgt_pseudo_depth, tgt_valid_weight, tgt_img)
+        #loss = w1 * loss_1 + w2 * loss_2 + w3 * loss_3 + loss_ranking
 
-        loss_ranking = compute_ranking_loss(tgt_depth, tgt_pseudo_depth, tgt_valid_weight, tgt_img)
-
-        loss = w1 * loss_1 + w2 * loss_2 + w3 * loss_3 + loss_ranking
+        loss_2 = compute_NormalSmooth_loss(tgt_depth, tgt_pseudo_depth, intrinsics, image_info)
+        loss = w1 * loss_1 + w2 * loss_2 + w3 * loss_3
 
         if log_losses:
             train_writer.add_scalar('photometric_error', loss_1.item(), n_iter)
-            train_writer.add_scalar('disparity_smoothness_loss', loss_2.item(), n_iter)
+            #train_writer.add_scalar('disparity_smoothness_loss', loss_2.item(), n_iter)
+            train_writer.add_scalar('normal_smoothness_loss', loss_2.item(), n_iter)
             train_writer.add_scalar('geometry_consistency_loss', loss_3.item(), n_iter)
-            train_writer.add_scalar('maskRanking_loss', loss_ranking.item(), n_iter)
+            #train_writer.add_scalar('maskRanking_loss', loss_ranking.item(), n_iter)
             train_writer.add_scalar('total_loss', loss.item(), n_iter)
 
         # record loss and EPE
