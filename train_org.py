@@ -298,14 +298,14 @@ def train(args, train_loader, disp_net, pose_net, optimizer, epoch_size, logger,
         #loss_ranking = compute_ranking_loss(tgt_depth, tgt_pseudo_depth, tgt_valid_weight, tgt_img)
         #loss = w1 * loss_1 + w2 * loss_2 + w3 * loss_3 + loss_ranking
 
-        loss_2 = compute_NormalSmooth_loss(tgt_depth, tgt_pseudo_depth, intrinsics, image_info)
+        #loss_2 = compute_NormalSmooth_loss(tgt_depth, tgt_pseudo_depth, intrinsics, image_info)
         loss_ranking = compute_ranking_loss(tgt_depth, tgt_pseudo_depth, tgt_valid_weight, tgt_img)
-        loss = w1 * loss_1 + w2 * loss_2 + w3 * loss_3 + loss_ranking
+        loss = w1 * loss_1 + w3 * loss_3 + loss_ranking
 
         if log_losses:
             train_writer.add_scalar('photometric_error', loss_1.item(), n_iter)
             #train_writer.add_scalar('disparity_smoothness_loss', loss_2.item(), n_iter)
-            train_writer.add_scalar('normal_smoothness_loss', loss_2.item(), n_iter)
+            #train_writer.add_scalar('normal_smoothness_loss', loss_2.item(), n_iter)
             train_writer.add_scalar('geometry_consistency_loss', loss_3.item(), n_iter)
             train_writer.add_scalar('ranking_loss', loss_ranking.item(), n_iter)
             train_writer.add_scalar('total_loss', loss.item(), n_iter)
