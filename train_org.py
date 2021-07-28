@@ -299,6 +299,8 @@ def train(args, train_loader, disp_net, pose_net, optimizer, epoch_size, logger,
         #loss = w1 * loss_1 + w2 * loss_2 + w3 * loss_3 + loss_ranking
 
         #loss_2 = compute_NormalSmooth_loss(tgt_depth, tgt_pseudo_depth, intrinsics, image_info)
+        loss_2 = torch.tensor(0).float().to(device)
+        
         loss_ranking = compute_ranking_loss(tgt_depth, tgt_pseudo_depth, tgt_valid_weight, tgt_img)
         loss = w1 * loss_1 + w3 * loss_3 + loss_ranking
 
