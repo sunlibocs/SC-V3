@@ -123,9 +123,9 @@ class Ranking_Loss(nn.Module):
 
     def forward(self, pred_depth, gt_depth, tgt_valid_weight, tgt_img):
         # dynamic mask
-        #unreliableMask = self.get_unreliable(tgt_valid_weight)
-        #za_1, zb_1, target_1 = self.generate_percentMask_target(gt_depth, pred_depth, unreliableMask)
-        #loss_percentMask, pointNum_1 = self.cal_ranking_loss(za_1, zb_1, target_1)
+        unreliableMask = self.get_unreliable(tgt_valid_weight)
+        za_1, zb_1, target_1 = self.generate_percentMask_target(gt_depth, pred_depth, unreliableMask)
+        loss_percentMask, pointNum_1 = self.cal_ranking_loss(za_1, zb_1, target_1)
 
         #global
         za_2, zb_2, target_2 = self.generate_global_target(gt_depth, pred_depth)
@@ -137,5 +137,5 @@ class Ranking_Loss(nn.Module):
         #za_3, zb_3, target_3 = self.generate_percentMask_target(gt_depth, pred_depth, lowTextureMask)
         #loss_texture, pointNum_3 = self.cal_ranking_loss(za_3, zb_3, target_3)
 
-        total_loss = loss_global/pointNum_2
+        total_loss = (loss_global + loss_percentMask)/(pointNum_2 + pointNum_1)
         return total_loss
