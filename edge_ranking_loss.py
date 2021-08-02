@@ -258,7 +258,7 @@ class GradientLoss(nn.Module):
 # Please comment regularization_loss if you don't want to use multi-scale gradient matching term
 #####################################################
 class EdgeguidedRankingLoss(nn.Module):
-    def __init__(self, point_pairs=10000, sigma=0.1, alpha=1.0, mask_value=1e-8):
+    def __init__(self, point_pairs=10000, sigma=0.15, alpha=1.0, mask_value=1e-8):
         super(EdgeguidedRankingLoss, self).__init__()
         self.point_pairs = point_pairs # number of point pairs
         self.sigma = sigma # used for determining the ordinal relationship between a selected pair
@@ -315,16 +315,16 @@ class EdgeguidedRankingLoss(nn.Module):
             # Edge-Guided sampling
             inputs_A, inputs_B, targets_A, targets_B, masks_A, masks_B, sample_num = edgeGuidedSampling(inputs[i,:], targets[i, :], edges_img[i], thetas_img[i], masks[i, :], h, w)
             # Random Sampling
-            random_sample_num = sample_num
-            random_inputs_A, random_inputs_B, random_targets_A, random_targets_B, random_masks_A, random_masks_B = randomSampling(inputs[i,:], targets[i, :], masks[i, :], self.mask_value, random_sample_num)
-
-            # Combine EGS + RS
-            inputs_A = torch.cat((inputs_A, random_inputs_A), 0)
-            inputs_B = torch.cat((inputs_B, random_inputs_B), 0)
-            targets_A = torch.cat((targets_A, random_targets_A), 0)
-            targets_B = torch.cat((targets_B, random_targets_B), 0)
-            masks_A = torch.cat((masks_A, random_masks_A), 0)
-            masks_B = torch.cat((masks_B, random_masks_B), 0)
+            # random_sample_num = sample_num
+            # random_inputs_A, random_inputs_B, random_targets_A, random_targets_B, random_masks_A, random_masks_B = randomSampling(inputs[i,:], targets[i, :], masks[i, :], self.mask_value, random_sample_num)
+            #
+            # # Combine EGS + RS
+            # inputs_A = torch.cat((inputs_A, random_inputs_A), 0)
+            # inputs_B = torch.cat((inputs_B, random_inputs_B), 0)
+            # targets_A = torch.cat((targets_A, random_targets_A), 0)
+            # targets_B = torch.cat((targets_B, random_targets_B), 0)
+            # masks_A = torch.cat((masks_A, random_masks_A), 0)
+            # masks_B = torch.cat((masks_B, random_masks_B), 0)
 
             #GT ordinal relationship
             target_ratio = torch.div(targets_A+1e-6, targets_B+1e-6)
@@ -336,11 +336,12 @@ class EdgeguidedRankingLoss(nn.Module):
             # consider forward-backward consistency checking, i.e, only compute losses of point pairs with valid GT
             consistency_mask = masks_A * masks_B
 
-            equal_loss = (inputs_A - inputs_B).pow(2) * mask_eq.double() * consistency_mask
+            # equal_loss = (inputs_A - inputs_B).pow(2) * mask_eq.double() * consistency_mask
             unequal_loss = torch.log(1 + torch.exp((-inputs_A + inputs_B) * labels)) * (~mask_eq).double() * consistency_mask
 
             # Please comment the regularization term if you don't want to use the multi-scale gradient matching loss !!!
-            loss = loss + self.alpha * equal_loss.mean() + 1.0 * unequal_loss.mean() #+ 0.2 * regularization_loss.double()
+            # loss = loss + self.alpha * equal_loss.mean() + 1.0 * unequal_loss.mean() #+ 0.2 * regularization_loss.double()
+            loss = loss + 1.0 * unequal_loss.mean() #+ 0.2 * regularization_loss.double()
 
         return loss[0].float()/n
 
