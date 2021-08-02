@@ -12,7 +12,7 @@ python train.py $TRAIN_SET \
 --with-pretrain 1 \
 --log-output --with-gt \
 --dataset nyu \
---name nyu_ep100_NormSmooth_Global+MaskRanking+NormRanking
+--name nyu_ep100_NormSmooth_Global+MaskRanking+EdgeRanking
 
 
 # --pretrained-disp=checkpoints/r18_nyu_stn/07-02-00-26/disp_model_best.pth.tar \
