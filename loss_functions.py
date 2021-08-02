@@ -188,7 +188,7 @@ def compute_NormalSmooth_loss(tgt_depth, tgt_pseudo_depth, intrinsics, image_inf
 
     loss = get_normalSmooth_loss(tgt_normal, tgt_pseudo_normal)
 
-    return loss
+    return loss, tgt_normal, tgt_pseudo_normal
 
 
 def compute_depth_gradient_loss(d_pred, d_gt):

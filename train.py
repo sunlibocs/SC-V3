@@ -16,6 +16,7 @@ from utils import tensor2array, save_checkpoint, save_checkpoint2, save_checkpoi
 from datasets.sequence_folders import SequenceFolder
 from datasets.pair_folders import PairFolder
 from loss_functions import compute_smooth_loss, compute_photo_and_geometry_loss, compute_errors, Image_Info, compute_NormalSmooth_loss
+from ranking_norm_loss import *
 from logger import TermLogger, AverageMeter
 from tensorboardX import SummaryWriter
 from inverse_warp import inverse_rotation_warp
@@ -74,6 +75,7 @@ from ranking_loss import Ranking_Loss
 from edge_ranking_loss import EdgeguidedRankingLoss
 compute_GM_ranking_loss = Ranking_Loss().to(device)
 compute_Edge_ranking_loss = EdgeguidedRankingLoss().to(device)
+compute_normal_ranking_loss = EdgeguidedNormalRankingLoss().to(device)
 image_info = None
 
 
@@ -343,17 +345,17 @@ def train(args, train_loader, disp_net, pose_net, stn_net, optimizer, epoch_size
                                                          poses, poses_inv, args.num_scales, args.with_ssim,
                                                          args.with_mask, args.with_auto_mask, args.padding_mode)
         
-        loss_2 = compute_NormalSmooth_loss(tgt_depth, tgt_pseudo_depth, intrinsics, image_info)
+        loss_2, tgt_normal, tgt_pseudo_normal = compute_NormalSmooth_loss(tgt_depth, tgt_pseudo_depth, intrinsics, image_info)
         loss_GM_ranking = compute_GM_ranking_loss(tgt_depth, tgt_pseudo_depth, tgt_valid_weight, tgt_img)
-        loss_edge_ranking = compute_Edge_ranking_loss(tgt_depth, tgt_pseudo_depth.cuda(), tgt_img)
+        loss_noraml_ranking = compute_normal_ranking_loss(tgt_depth, tgt_pseudo_depth.cuda(), tgt_img, tgt_normal, tgt_pseudo_normal)
 
-        loss = w1*loss_1 + w2*loss_2 + w3*loss_3 + w4*loss_rot_triplet + w5*loss_rot_supervised + loss_GM_ranking + loss_edge_ranking
+        loss = w1*loss_1 + w2*loss_2 + w3*loss_3 + w4*loss_rot_triplet + w5*loss_rot_supervised + loss_GM_ranking + loss_noraml_ranking
 
         if log_losses:
             train_writer.add_scalar('photometric_error', loss_1.item(), n_iter)
             train_writer.add_scalar('disparity_smoothness_loss', loss_2.item(), n_iter)
             train_writer.add_scalar('loss_GM_ranking', loss_GM_ranking.item(), n_iter)
-            train_writer.add_scalar('loss_edge_ranking', loss_edge_ranking.item(), n_iter)
+            train_writer.add_scalar('loss_noraml_ranking', loss_noraml_ranking.item(), n_iter)
             train_writer.add_scalar('geometry_consistency_loss', loss_3.item(), n_iter)
             train_writer.add_scalar('rot_triplet_loss', loss_rot_triplet.item(), n_iter)
             train_writer.add_scalar('rot_before_avg', rot_before.item() / len(ref_imgs), n_iter)

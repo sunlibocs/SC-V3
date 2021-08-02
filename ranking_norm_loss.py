@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import os
 
-from Surface_normal import surface_normal_from_depth, vis_normal
+# from Surface_normal import surface_normal_from_depth, vis_normal
 import cv2
 
 """
@@ -133,9 +133,9 @@ def edgeGuidedSampling(inputs, targets, edges_img, thetas_img, masks, h, w):
 
 
 ######################################################
-# EdgeguidedNormalLoss
+# EdgeguidedNormalRankingLoss
 #####################################################
-class EdgeguidedNormalLoss(nn.Module):
+class EdgeguidedNormalRankingLoss(nn.Module):
     def __init__(
         self,
         point_pairs=10000,
@@ -145,7 +145,7 @@ class EdgeguidedNormalLoss(nn.Module):
         cos_theta4=0.86,
         mask_value=-1e-8,
     ):
-        super(EdgeguidedNormalLoss, self).__init__()
+        super(EdgeguidedNormalRankingLoss, self).__init__()
         self.point_pairs = point_pairs  # number of point pairs
         self.mask_value = mask_value
         self.cos_theta1 = cos_theta1  # 75 degree
@@ -207,14 +207,16 @@ class EdgeguidedNormalLoss(nn.Module):
         thetas = F.pad(thetas, (1, 1, 1, 1), "constant", 0)
         return edges, thetas
 
-    def forward(self, pred_depths, gt_depths, images, focal_length):
+    def forward(self, pred_depths, gt_depths, images, inputs_normal, targets_normal):
         """
         inputs and targets: surface normal image
         images: rgb images
         """
         masks = gt_depths > self.mask_value
-        inputs = surface_normal_from_depth(pred_depths, focal_length, valid_mask=masks)
-        targets = surface_normal_from_depth(gt_depths, focal_length, valid_mask=masks)
+        # inputs = surface_normal_from_depth(pred_depths, focal_length, valid_mask=masks)
+        # targets = surface_normal_from_depth(gt_depths, focal_length, valid_mask=masks)
+        inputs = inputs_normal
+        targets = targets_normal
         # find edges from RGB
         edges_img, thetas_img = self.getEdge(images)
         # find edges from normals
@@ -288,51 +290,6 @@ class EdgeguidedNormalLoss(nn.Module):
                 h,
                 w,
             )
-
-            ############test ######################
-            # randnum = np.random.randint(10000000)
-            # a = edges_img[0, :].reshape(h, w).cpu().numpy().squeeze()
-            # plt.imsave('../test_results/%d-imgedge.png'%randnum, a)
-            # edges_normal_reshape = edges_normal[i, :].reshape(h, w).cpu().numpy().squeeze()
-            # targets_i_rawshape = targets[i, :].reshape(3, h, w)
-            # vis_target = vis_normal(targets_i_rawshape.permute((1, 2, 0)).cpu().numpy())
-            # color1 = (0, 0, 0)
-            # color2 = (255, 255, 255)
-            # color3 = (0, 0, 255)
-            # mask_p_img = masks_A & masks_B
-            # mask_img = mask_p_img[:int(mask_p_img.shape[0]/3)] & mask_p_img[int(mask_p_img.shape[0]/3):int(mask_p_img.shape[0]*2/3)] & \
-            #            mask_p_img[int(mask_p_img.shape[0] * 2 / 3):int(mask_p_img.shape[0])]
-            # mask_p_normal = normal_masks_A & normal_masks_B
-            # mask_normal = mask_p_normal[:int(mask_p_normal.shape[0]/3)] & mask_p_normal[int(mask_p_normal.shape[0]/3):int(mask_p_normal.shape[0]*2/3)] & \
-            #            mask_p_normal[int(mask_p_normal.shape[0] * 2 / 3):int(mask_p_normal.shape[0])]
-            # mask_img_normal = torch.cat((mask_img, mask_normal), dim=0).cpu().numpy()
-            # col_img = torch.cat((col_img, col_normal), dim=1)
-            # row_img = torch.cat((row_img, row_normal), dim=1)
-            #
-            # pa = np.stack((col_img[0, :].cpu().numpy()[mask_img_normal], row_img[0, :].cpu().numpy()[mask_img_normal]), axis=1)
-            # pb = np.stack((col_img[1, :].cpu().numpy()[mask_img_normal], row_img[1, :].cpu().numpy()[mask_img_normal]), axis=1)
-            # pc = np.stack((col_img[2, :].cpu().numpy()[mask_img_normal], row_img[2, :].cpu().numpy()[mask_img_normal]), axis=1)
-            # pd = np.stack((col_img[3, :].cpu().numpy()[mask_img_normal], row_img[3, :].cpu().numpy()[mask_img_normal]), axis=1)
-            # random_select = np.random.choice(pd.shape[0], 1000, replace=False)
-            # for j in random_select:
-            #     vis_target = cv2.line(vis_target, tuple(pa[j]), tuple(pb[j]), color1, 1)
-            #     vis_target = cv2.line(vis_target, tuple(pc[j]), tuple(pd[j]), color2, 1)
-            #     vis_target = cv2.line(vis_target, tuple(pb[j]), tuple(pc[j]), color3, 1)
-            #
-            # vis_input = vis_normal(inputs[i, :].reshape(3, h, w).permute((1, 2, 0)).cpu().detach().numpy())
-            # img_i = images[i, :].cpu()
-            # img_i *= torch.tensor((0.229, 0.224, 0.225))[:, None, None]
-            # img_i += torch.tensor((0.485, 0.456, 0.406))[:, None, None]
-            # img_i *= 255
-            # img_i = img_i.permute((1,2,0)).numpy().astype(np.uint8)
-            #
-            # cv2.imwrite('../test_results/%d-img.png' % randnum, img_i[:, :, ::-1])
-            # plt.imsave('../test_results/%d-normaledge.png' % randnum, edges_normal_reshape)
-            # cv2.imwrite('../test_results/%d-normaltarget.png' % randnum, vis_target)
-            # cv2.imwrite('../test_results/norm-%d-pred.png' % randnum, vis_input)
-            # plt.imsave('../test_results/%d-depthedge.png' % randnum, edges_depth.squeeze().cpu().numpy().astype(np.float), cmap='rainbow')
-            # plt.imsave('../test_results/%d-gtdepth.png' % randnum, edges_depth_mask.squeeze().cpu().numpy().astype(np.float), cmap='rainbow')
-            # ###################test#########################
 
             # Combine EGS + EGNS
             inputs_A = torch.cat((inputs_A, normal_inputs_A), 1)
