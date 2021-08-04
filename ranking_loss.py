@@ -101,7 +101,7 @@ class Ranking_Loss(nn.Module):
         # invalidMask = tgt_valid_weight < 0.75
         B, C, H, W = tgt_valid_weight.shape
         unreliable_percent = 0.2
-        unreliable_percent_2 = 0.5 ## unreliable_percent *  unreliable_percent_2 is the final
+        unreliable_percent_2 = 0.2 ## unreliable_percent *  unreliable_percent_2 is the final
         invalidMask = torch.ones_like(tgt_valid_weight)
         invalidMask2 = torch.ones_like(tgt_valid_weight)
         for bs in range(B):
