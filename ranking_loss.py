@@ -98,7 +98,7 @@ class Ranking_Loss(nn.Module):
     def get_unreliable(self, tgt_valid_weight):
         # invalidMask = tgt_valid_weight < 0.75
         B, C, H, W = tgt_valid_weight.shape
-        unreliable_percent = 0.5
+        unreliable_percent = 0.3
         invalidMask = torch.ones_like(tgt_valid_weight)
         for bs in range(B):
             weight = tgt_valid_weight[bs]
