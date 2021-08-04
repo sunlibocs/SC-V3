@@ -263,7 +263,8 @@ def compute_errors(gt, pred, dataset):
         valid = valid & crop_mask
 
         valid_gt = current_gt[valid]
-        valid_pred = current_pred[valid].clamp(min_depth, max_depth)
+        #valid_pred = current_pred[valid].clamp(min_depth, max_depth)
+        valid_pred = current_pred[valid]
 
         valid_pred = valid_pred * torch.median(valid_gt)/torch.median(valid_pred)
 
