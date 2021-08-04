@@ -39,9 +39,10 @@ class Ranking_Loss(nn.Module):
         return pred[mask_A][mask_ignore], pred[mask_B][mask_ignore], target
 
 
-    def generate_percentMask_target(self, depth, pred, invalid_mask, theta=0.15):
+    def generate_percentMask_target(self, depth, pred, invalid_mask, reliableMask, theta=0.15):
         B, C, H, W = depth.shape
-        valid_mask = ~invalid_mask
+        #valid_mask = ~invalid_mask
+        valid_mask = reliableMask
         gt_inval, gt_val, pred_inval, pred_val = None, None, None, None
         for bs in range(B):
             gt_invalid = depth[bs, :, :, :]
@@ -81,6 +82,7 @@ class Ranking_Loss(nn.Module):
 
         return pred_inval, pred_val, target
 
+
     def cal_ranking_loss(self, z_A, z_B, target):
         """
         loss for a given set of pixels:
@@ -98,19 +100,32 @@ class Ranking_Loss(nn.Module):
     def get_unreliable(self, tgt_valid_weight):
         # invalidMask = tgt_valid_weight < 0.75
         B, C, H, W = tgt_valid_weight.shape
-        unreliable_percent = 0.3
+        unreliable_percent = 0.2
+        unreliable_percent_2 = 0.5 ## unreliable_percent *  unreliable_percent_2 is the final
         invalidMask = torch.ones_like(tgt_valid_weight)
+        invalidMask2 = torch.ones_like(tgt_valid_weight)
         for bs in range(B):
             weight = tgt_valid_weight[bs]
             maskIv = invalidMask[bs]
+            maskIv2 = invalidMask2[bs]
             weight = weight.view(-1)
             maskIv = maskIv.view(-1)
+            maskIv2 = maskIv2.view(-1)
 
             weight_sorted, indices = torch.sort(weight)
-            indices[:int(unreliable_percent*H*W)] = indices[H*W-1] #each item in indices represent an index(valid)
-            maskIv[indices] = 0 #use indices for the selection. mask=0 -> valid
+            len1 = int(unreliable_percent*H*W) #The 'invalid' element amount for the first selection
+            len2 = int(len1*unreliable_percent_2) #The 'invalid' element amount for the second selection
+            indices2 = indices.clone()
+            indices2[:len1] = indices2[H*W-1] #set to the last index to avoid being selected
+            maskIv2[indices2] = 0
 
-        return invalidMask > 0
+            idx = torch.randint(0, len1, [len2])
+            indices[idx] = indices[H*W-1] #set to the last index to avoid being selected
+
+            maskIv[indices] = 0 # mask=0 -> valid
+
+        return invalidMask > 0, invalidMask2==0
+
 
     def get_textureWeight(self, tgt_img):
         grad_img_x = torch.mean(torch.abs(tgt_img[:, :, :, :-1] - tgt_img[:, :, :, 1:]), 1, keepdim=True)
@@ -123,8 +138,8 @@ class Ranking_Loss(nn.Module):
 
     def forward(self, pred_depth, gt_depth, tgt_valid_weight, tgt_img):
         # dynamic mask
-        unreliableMask = self.get_unreliable(tgt_valid_weight)
-        za_1, zb_1, target_1 = self.generate_percentMask_target(gt_depth, pred_depth, unreliableMask)
+        unreliableMask, reliableMask = self.get_unreliable(tgt_valid_weight)
+        za_1, zb_1, target_1 = self.generate_percentMask_target(gt_depth, pred_depth, unreliableMask, reliableMask)
         loss_percentMask, pointNum_1 = self.cal_ranking_loss(za_1, zb_1, target_1)
 
         #global
