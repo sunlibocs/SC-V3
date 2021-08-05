@@ -305,7 +305,7 @@ def train(args, train_loader, disp_net, pose_net, optimizer, epoch_size, logger,
         loss_2, tgt_normal, tgt_pseudo_normal = compute_NormalSmooth_loss(tgt_depth, tgt_pseudo_depth, intrinsics, image_info)
         loss_GM_ranking = compute_GM_ranking_loss(tgt_depth, tgt_pseudo_depth, tgt_valid_weight, tgt_img)
         loss_noraml_ranking = compute_normal_ranking_loss(tgt_depth, tgt_pseudo_depth.cuda(), tgt_img, tgt_normal, tgt_pseudo_normal)
-        loss = w1 * loss_1 + w2 * loss_2 + w3 * loss_3 + loss_GM_ranking + loss_noraml_ranking
+        loss = w1 * loss_1 + w2 * loss_2 + w3 * loss_3 + loss_GM_ranking + 0.1*loss_noraml_ranking
 
         if log_losses:
             train_writer.add_scalar('photometric_error', loss_1.item(), n_iter)
@@ -313,7 +313,7 @@ def train(args, train_loader, disp_net, pose_net, optimizer, epoch_size, logger,
             train_writer.add_scalar('normal_smoothness_loss', loss_2.item(), n_iter)
             train_writer.add_scalar('geometry_consistency_loss', loss_3.item(), n_iter)
             train_writer.add_scalar('gm_ranking_loss', loss_GM_ranking.item(), n_iter)
-            train_writer.add_scalar('normal_ranking_loss', loss_noraml_ranking.item(), n_iter)
+            train_writer.add_scalar('normal_ranking_loss', 0.1*loss_noraml_ranking.item(), n_iter)
             train_writer.add_scalar('total_loss', loss.item(), n_iter)
 
         # record loss and EPE
